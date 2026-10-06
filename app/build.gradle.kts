@@ -19,20 +19,20 @@ android {
     }
 
     signingConfigs {
-        create("keystore") {
+        create("release") {
             storeFile = file("keystore.jks")
-            storePassword = "dirtyfrag"
-            keyAlias = "dirtyfrag"
-            keyPassword = "dirtyfrag"
+            storePassword = "KEYSTORE_PASSWORD"
+            keyAlias = "KEY_ALIAS"
+            keyPassword = "KEY_PASSWORD"
         }
     }
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.getByName("keystore")
+            signingConfig = signingConfigs.getByName("release")
         }
         release {
-            signingConfig = signingConfigs.getByName("keystore")
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
