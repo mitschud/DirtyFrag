@@ -18,17 +18,14 @@ android {
         }
     }
 
-    signingConfigs {
-        create("release") {
-            storeFile = file("keystore.jks")
-
-            val password = System.getenv("KEYSTORE_PASSWORD")
-
-            storePassword = password
-            keyAlias = "key0"
-            keyPassword = password
-        }
+  signingConfigs {
+    create("release") {
+        storeFile = file("keystore.jks")
+        storePassword = System.getenv("KEYSTORE_PASSWORD")
+        keyAlias = "key0"
+        keyPassword = System.getenv("KEY_PASSWORD")
     }
+}
 
     buildTypes {
         debug {
