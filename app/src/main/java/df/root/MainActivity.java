@@ -372,14 +372,14 @@ public class MainActivity extends AppCompatActivity implements IReporter {
             if (!runArmed) {
                 runArmed = true;
                 v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
-                binding.btnRun.setText("Are you sure");
+                binding.btnRun.setText(R.string.are_you_sure);
                 return;
             }
             runArmed = false;
             v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
             running = true;
             binding.btnRun.setEnabled(false);
-            binding.btnRun.setText("Running");
+            binding.btnRun.setText(R.string.running);
             // Same dark greyed-out styling as the Rooted state.
             binding.btnRun.setTextColor(0xFF6E6E6E);
             binding.btnRun.setBackgroundTintList(ColorStateList.valueOf(0xFF1F1F1F));
@@ -844,7 +844,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
         binding.twoStep.setSeg1(seg1, "Failure");
         binding.twoStep.setSeg2(1f, "Reboot", 0xFFE57373);
         binding.btnRun.setEnabled(false);
-        binding.btnRun.setText("Run exploit");
+        binding.btnRun.setText(R.string.run_exploit);
         binding.btnRun.setTextColor(0xFF6E6E6E);
         binding.btnRun.setBackgroundTintList(ColorStateList.valueOf(0xFF1F1F1F));
         ((com.google.android.material.button.MaterialButton) binding.btnRun)
