@@ -543,11 +543,10 @@ public class MainActivity extends AppCompatActivity implements IReporter {
             box.addView(rmCol, new android.widget.LinearLayout.LayoutParams(
                     android.view.ViewGroup.LayoutParams.MATCH_PARENT, (int) (58 * md)));
                        // -- import ksud Page row --
-            TextView ksudRow = new TextView(this);
             if (isXiaomiFamily()) {
     TextView ksudRow = new TextView(this);
     ksudRow.setBackgroundResource(R.drawable.menu_row_highlight);
-    ksudRow.setText(R.string.import_custom_ksud);
+    ksudRow.setText(R.string.import_ksud);
     ksudRow.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.START);
     ksudRow.setPadding((int) (20 * md), 0, 0, 0);
     ksudRow.setTextColor(0xFFE8E8E8);
