@@ -117,7 +117,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                 exploitPhase = "cleanup";
                 cleanupSteps = 0;
                 setSeg1(1f);
-                setSeg2(0.05f, "Verification", 0xFFFFFFFF);
+                setSeg2(0.05f, getString(R.string.verification), 0xFFFFFFFF);
                 break;
             default:
                 break;
@@ -143,7 +143,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
         if (exploitPhase.equals("cleanup")
                 && (t.startsWith("* restore") || t.startsWith("* cache dropped"))) {
             cleanupSteps++;
-            setSeg2(Math.min(1f, cleanupSteps / 3f), "Verification", 0xFFFFFFFF);
+            setSeg2(Math.min(1f, cleanupSteps / 3f), getString(R.string.verification), 0xFFFFFFFF););
         }
     }
 
@@ -361,7 +361,8 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                 && last.toLowerCase().contains("=== exploit failed");
         if (rootedNow || lastSuccess) {
             binding.twoStep.setSeg1(1f, "100%");
-            binding.twoStep.setSeg2(1f, "Verified", 0xFFFFFFFF);
+            binding.twoStep.setSeg2(1f, getString(R.string.verified), 0xFFFFFFFF);
+    );
         } else if (lastFailed) {
             setFailedState();
         }
@@ -534,15 +535,10 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                                     + "rm -f /data/user_de/0/df.root/ksud"});
                     int rc = p.waitFor();
                     mMain.post(() -> {
-                        Toast.makeText(MainActivity.this,
-                                rc == 0 ? "KSU/KSUD removed"
-                                        : "Removal failed (code " + rc + ")",
-                                Toast.LENGTH_SHORT).show();
-                        setRootedState(false);
+                        Toast.makeText(MainActivity.this, rc == 0 ? getString(R.string.ksu_ksud_removed) : 				      	 	getString(R.string.removal_failed_code, rc), Toast.LENGTH_SHORT).show();
                     });
                 } catch (Exception e) {
-                    Toast.makeText(MainActivity.this,
-                            "su not available", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, R.string.su_not_available, Toast.LENGTH_SHORT).show();
                 }
             });
             box.addView(rmCol, new android.widget.LinearLayout.LayoutParams(
@@ -654,8 +650,8 @@ public class MainActivity extends AppCompatActivity implements IReporter {
      *  disabled toggles, titles suffixed with (Expert). */
     private void applyExpertMode() {
         boolean ok = expertMode;
-        binding.tvAutorunTitle.setText(ok ? "Autorun" : "Autorun (Expert)");
-        binding.tvRebootTitle.setText(ok ? "Auto reboot" : "Auto reboot (Expert)");
+        binding.tvAutorunTitle.setText(ok ? R.string.autorun : R.string.autorun_expert);
+        binding.tvRebootTitle.setText(ok ? R.string.auto_reboot : R.string.auto_reboot_expert);
         binding.tvAutorunTitle.setTextColor(ok ? 0xFFFFFFFF : 0xFF6E6E6E);
         binding.tvAutorunDesc.setTextColor(ok ? 0xFF9E9E9E : 0xFF5A5A5A);
         binding.tvRebootTitle.setTextColor(ok ? 0xFFFFFFFF : 0xFF6E6E6E);
@@ -721,9 +717,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                 binding.switchModules.setChecked(false);
                 binding.switchModules.setEnabled(false);
                 moduleRefresh = false;
-                binding.modulesSubtitle.setText("not found".equals(suState)
-                        ? "Requires root (run the exploit first)"
-                        : "No Modules Installed");
+                binding.modulesSubtitle.setText("not found".equals(suState) ? getString(R.string.requires_root_run_exploit_first) : 		getString(R.string.no_modules_installed));
             });
             return;
         }
@@ -746,10 +740,9 @@ public class MainActivity extends AppCompatActivity implements IReporter {
         boolean allDisabled = disabled >= total;
         final int fTotal = total, fDisabled = Math.min(disabled, total);
         String text = fDisabled == 0
-                ? "Enabled - Active at next reroot"
-                : fDisabled == fTotal
-                    ? "Disabled - No Modules on reroot"
-                    : fDisabled + " of " + fTotal + " disabled - applies at next reroot";
+                ? getString(R.string.modules_enabled_next_reroot)
+                : fDisabled == fTotal ? getString(R.string.modules_disabled_next_reroot)
+                    : getString(R.string.modules_disabled_count_next_reroot, fDisabled, fTotal);
         Log.i(TAG, "modules toggle: " + fDisabled + "/" + fTotal + " disabled -> " + text);
         mMain.post(() -> {
             moduleRefresh = true;
@@ -771,9 +764,9 @@ public class MainActivity extends AppCompatActivity implements IReporter {
             String r = runSu(cmd);
             mMain.post(() -> {
                 Toast.makeText(MainActivity.this,
-                        r == null ? "su not available"
-                                : on ? "KSU modules enabled - applies after reboot"
-                                : "KSU modules disabled - applies after reboot",
+                        r == null ? getString(R.string.su_not_available)
+                                : on ? getString(R.string.ksu_modules_enabled_after_reboot)
+                                : getString(R.string.ksu_modules_disabled_after_reboot),
                         Toast.LENGTH_SHORT).show();
                 refreshModuleState();
             });
@@ -841,8 +834,8 @@ public class MainActivity extends AppCompatActivity implements IReporter {
      *  retrying without rebooting would fail the same way. */
     private void setFailedState() {
         binding.twoStep.setFailed(true);
-        binding.twoStep.setSeg1(seg1, "Failure");
-        binding.twoStep.setSeg2(1f, "Reboot", 0xFFE57373);
+        binding.twoStep.setSeg1(seg1, getString(R.string.failure));
+        binding.twoStep.setSeg2(1f, getString(R.string.reboot), 0xFFE57373);
         binding.btnRun.setEnabled(false);
         binding.btnRun.setText(R.string.run_exploit);
         binding.btnRun.setTextColor(0xFF6E6E6E);
@@ -855,7 +848,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
     private void setRootedState(boolean rooted) {
         runArmed = false;
         binding.btnRun.setEnabled(!rooted);
-        binding.btnRun.setText(rooted ? "Rooted" : "Run exploit");
+	binding.btnRun.setText(rooted ? R.string.rooted : R.string.run_exploit);
         binding.btnRun.setTextColor(
                 rooted ? 0xFF6E6E6E : 0xFFE0E0E0);
         binding.btnRun.setBackgroundTintList(ColorStateList.valueOf(
@@ -1072,7 +1065,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                 return;
             }
         }
-        Toast.makeText(this, "KernelSU manager not found", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, R.string.kernel_su_manager_not_found, Toast.LENGTH_SHORT).show();
     }
 
     private static int mixColor(int a, int b, float t) {
@@ -1130,7 +1123,8 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                 boolean rooted = new File("/dev/df").exists();
                 if (rooted) {
                     setRootedState(true);
-                    binding.twoStep.setSeg2(1f, "Verified", 0xFFFFFFFF);
+                    binding.twoStep.setSeg2(1f,getString(R.string.verified),0xFFFFFFFF
+    );
                 } else {
                     setRootedState(false);
                     setFailedState();
@@ -1144,7 +1138,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
         try {
             startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
         } catch (Exception e) {
-            Toast.makeText(this, "No browser found", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.no_browser_found, Toast.LENGTH_SHORT).show();
         }
     }
 
