@@ -193,7 +193,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="ksu_modules"
+                    android:text="@string/ksu_modules"
                     android:textColor="#FFFFFFFF"
                     android:textSize="16sp" />
 
@@ -201,7 +201,7 @@
                     android:id="@+id/modulesSubtitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="modules_enabled"
+                    android:text="@string/modules_enabled"
                     android:textColor="#FF9E9E9E"
                     android:textSize="12sp" />
 
@@ -253,14 +253,14 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="advanced_log"
+                    android:text="@string/advanced_log"
                     android:textColor="#FFFFFFFF"
                     android:textSize="16sp" />
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="advanced_log_desc"
+                    android:text="@string/advanced_log_desc"
                     android:textColor="#FF9E9E9E"
                     android:textSize="12sp" />
 
@@ -360,7 +360,7 @@
         android:paddingEnd="28dp"
         android:elevation="12dp"
         android:stateListAnimator="@null"
-        android:text="run_exploit"
+        android:text="@string/run_exploit"
         android:textSize="16sp"
         android:backgroundTint="#FF7A7A7A"
         android:textColor="#FFE0E0E0"
@@ -407,4 +407,3 @@
         app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
-
