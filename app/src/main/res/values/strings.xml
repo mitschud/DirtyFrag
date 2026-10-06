@@ -59,4 +59,7 @@
 <string name="ksu_modules_disabled_after_reboot">KSU modules disabled - applies after reboot</string>
 <string name="failure">Failure</string>
 <string name="reboot">Reboot</string>
+<string name="force_jailbreak">Force jailbreak</string>
+<string name="force_jailbreak_done">Force jailbreak completed</string>
+<string name="force_jailbreak_failed">Force jailbreak failed</string>
 </resources>
