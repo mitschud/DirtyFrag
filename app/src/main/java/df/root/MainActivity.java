@@ -544,19 +544,40 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                     android.view.ViewGroup.LayoutParams.MATCH_PARENT, (int) (58 * md)));
                        // -- import ksud Page row --
             TextView ksudRow = new TextView(this);
-            ksudRow.setBackgroundResource(R.drawable.menu_row_highlight);
-            ksudRow.setText(R.string.import_ksud);
-            ksudRow.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.START);
-            ksudRow.setPadding((int) (20 * md), 0, 0, 0);
-            ksudRow.setTextColor(0xFFE8E8E8);
-            ksudRow.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15);
-            ksudRow.setOnClickListener(v2 -> {
-                v2.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
-               if (pwRef[0] != null) pwRef[0].dismiss();
-    ksudPicker.launch("*/*");
-});
-            box.addView(ksudRow, new android.widget.LinearLayout.LayoutParams(
-                    android.view.ViewGroup.LayoutParams.MATCH_PARENT, (int) (46 * md)));
+            if (isXiaomiFamily()) {
+    TextView ksudRow = new TextView(this);
+    ksudRow.setBackgroundResource(R.drawable.menu_row_highlight);
+    ksudRow.setText(R.string.import_custom_ksud);
+    ksudRow.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.START);
+    ksudRow.setPadding((int) (20 * md), 0, 0, 0);
+    ksudRow.setTextColor(0xFFE8E8E8);
+    ksudRow.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15);
+    ksudRow.setOnClickListener(v2 -> {
+        v2.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+        if (pwRef[0] != null) pwRef[0].dismiss();
+        ksudPicker.launch("*/*");
+    });
+    box.addView(ksudRow, new android.widget.LinearLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, (int) (46 * md)));
+}
+if (isXiaomiFamily()) {
+    TextView forceRow = new TextView(this);
+    forceRow.setBackgroundResource(R.drawable.menu_row_highlight);
+    forceRow.setText(R.string.force_jailbreak);
+    forceRow.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.START);
+    forceRow.setPadding((int) (20 * md), 0, 0, 0);
+    forceRow.setTextColor(0xFFE8E8E8);
+    forceRow.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15);
+
+    forceRow.setOnClickListener(v2 -> {
+        v2.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+        if (pwRef[0] != null) pwRef[0].dismiss();
+        forceXiaomiJailbreak();
+    });
+
+    box.addView(forceRow, new android.widget.LinearLayout.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            (int) (46 * md)));
+}
 
             // Width: content, but at least 210dp so the popup reads properly.
             box.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
@@ -926,7 +947,116 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                                 (float) anim.getAnimatedValue()))));
         g.start();
     }
+private boolean isXiaomiFamily() {
+    String manufacturer = android.os.Build.MANUFACTURER == null ? "" : android.os.Build.MANUFACTURER.trim().toUpperCase(java.util.Locale.ROOT);
+    return manufacturer.equals("XIAOMI") || manufacturer.equals("Xiaomi") || manufacturer.equals("REDMI")|| manufacturer.equals("Redmi")|| manufacturer.equals("POCO");
+}
 
+private void forceXiaomiJailbreak() {
+    if (!isXiaomiFamily() || running) return;
+
+    running = true;
+
+    binding.outputView.setText("");
+    logBuffer.setLength(0);
+    if (lastLogFile != null && lastLogFile.exists()) lastLogFile.delete();
+    appendLog(fwToken());
+    updateLogVisibility();
+
+    mExec.execute(() -> {
+        try {
+            ExploitRunner.stageKsud(MainActivity.this, MainActivity.this);
+
+            File base = createDeviceProtectedStorageContext().getFilesDir().getParentFile();
+            File ksud = new File(base, "ksud");
+            File ksudLog = new File(base, "ksulog.txt");
+
+            if (ksudLog.exists()) ksudLog.delete();
+
+            report("\n=== force jailbreak ===\n");
+            report("manufacturer: " + android.os.Build.MANUFACTURER + "\n");
+            report("ksud: " + ksud.getAbsolutePath() + "\n");
+
+            Process p = new ProcessBuilder(
+                    "/system/bin/service",
+                    "call",
+                    "miui.mqsas.IMQSNative",
+                    "21",
+                    "i32", "1",
+                    "s16", ksud.getAbsolutePath(),
+                    "i32", "1",
+                    "s16", "late-load",
+                    "s16", ksudLog.getAbsolutePath(),
+                    "i32", "60"
+            ).redirectErrorStream(true).start();
+
+            java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(p.getInputStream()));
+
+            StringBuilder serviceOutput = new StringBuilder();
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+                serviceOutput.append(line).append('\n');
+            }
+
+            reader.close();
+
+            int rc = p.waitFor();
+
+            if (serviceOutput.length() > 0) {
+                report(serviceOutput.toString());
+            }
+
+            for (int i = 0; i < 20 && (!ksudLog.exists() || ksudLog.length() == 0); i++) {
+                Thread.sleep(250);
+            }
+
+            if (ksudLog.exists() && ksudLog.length() > 0) {
+                try (java.io.FileInputStream in = new java.io.FileInputStream(ksudLog);
+                     java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
+
+                    byte[] buf = new byte[8192];
+                    int n;
+
+                    while ((n = in.read(buf)) != -1) {
+                        out.write(buf, 0, n);
+                    }
+
+                    String log = out.toString(java.nio.charset.StandardCharsets.UTF_8.name());
+
+                    if (!log.trim().isEmpty()) {
+                        report("\n=== ksud log ===\n");
+                        report(log + "\n");
+                    }
+                }
+            }
+
+            report("service call rc=" + rc + "\n");
+
+            mMain.post(() -> {
+                running = false;
+                Toast.makeText(MainActivity.this,
+                        rc == 0 ? R.string.force_jailbreak_done : R.string.force_jailbreak_failed,
+                        Toast.LENGTH_SHORT).show();
+                updateLogVisibility();
+                mExec.execute(this::refreshModuleState);
+            });
+
+        } catch (Exception e) {
+            Log.e(TAG, "force jailbreak failed", e);
+            report("\nforce jailbreak failed: " + e + "\n");
+
+            mMain.post(() -> {
+                running = false;
+                Toast.makeText(MainActivity.this,
+                        R.string.force_jailbreak_failed,
+                        Toast.LENGTH_SHORT).show();
+                updateLogVisibility();
+            });
+        }
+    });
+}
     private void copyKsud(Uri uri) {
     mExec.execute(() -> {
         File base = createDeviceProtectedStorageContext()
@@ -941,7 +1071,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                 tmp.delete();
             }
 
-            // 先匯入到暫存檔
+            
             try (java.io.InputStream in =
                          getContentResolver().openInputStream(uri);
                  java.io.OutputStream out =
