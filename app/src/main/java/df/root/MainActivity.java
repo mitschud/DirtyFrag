@@ -60,7 +60,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
         registerForActivityResult(
                 new androidx.activity.result.contract.ActivityResultContracts.GetContent(),
                 uri -> {
-                    if (uri != null) installCustomKsud(uri);
+                    if (uri != null) copyKsud(uri);
                 });
     @Override
     public void report(String msg) {
@@ -548,14 +548,14 @@ public class MainActivity extends AppCompatActivity implements IReporter {
             box.addView(rmCol, new android.widget.LinearLayout.LayoutParams(
                     android.view.ViewGroup.LayoutParams.MATCH_PARENT, (int) (58 * md)));
                        // -- import ksud Page row --
-            TextView ghRow = new TextView(this);
-            ghRow.setBackgroundResource(R.drawable.menu_row_highlight);
-            ghRow.setText("Import Ksud");
-            ghRow.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.START);
-            ghRow.setPadding((int) (20 * md), 0, 0, 0);
-            ghRow.setTextColor(0xFFE8E8E8);
-            ghRow.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15);
-            ghRow.setOnClickListener(v2 -> {
+            TextView ksudRow = new TextView(this);
+            ksudRow.setBackgroundResource(R.drawable.menu_row_highlight);
+            ksudRow.setText("Import Ksud");
+            ksudRow.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.START);
+            ksudRow.setPadding((int) (20 * md), 0, 0, 0);
+            ksudRow.setTextColor(0xFFE8E8E8);
+            ksudRow.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15);
+            ksudRow.setOnClickListener(v2 -> {
                 v2.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
                if (pwRef[0] != null) pwRef[0].dismiss();
     ksudPicker.launch("*/*");
