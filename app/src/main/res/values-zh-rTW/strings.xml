@@ -16,9 +16,9 @@
     <string name="advanced_log">詳情</string>
     <string name="advanced_log_desc">開啟後，顯示完整日誌</string>
 
-    <string name="run_exploit">執行漏洞</string>
-    <string name="are_you_sure">確定要執行嗎？</string>
-    <string name="running">執行中</string>
+    <string name="run_exploit">越獄</string>
+    <string name="are_you_sure">確定要越獄嗎？</string>
+    <string name="running">越獄中</string>
     <string name="rooted">已獲取Root權限</string>
     <string name="verified">已驗證</string>
     <string name="verification">驗證中</string>
@@ -30,7 +30,7 @@
     <string name="click_3_times">點擊 3 次確認</string>
     <string name="click_2_times">再點擊 2 次</string>
     <string name="click_1_time">再點擊 1 次</string>
-    <string name="one_more_click">確定移除ROOT?</string>
+    <string name="one_more_click">確定要移除嗎?</string>
     <string name="requires_root">需要 Root</string>
 
     <string name="import_ksud">導入 KSUD</string>
@@ -50,4 +50,13 @@
 
     <string name="save_log">將日誌儲存到Download</string>
     <string name="no_browser">找不到瀏覽器</string>
+    <string name="autorun_expert">自動執行（進階模式）</string>
+<string name="auto_reboot_expert">熱重啟（進階模式）</string>
+<string name="modules_enabled_next_reroot">已啟用－下次重新取得 Root 時生效</string>
+<string name="modules_disabled_next_reroot">已停用－下次重新取得 Root 時不載入模塊</string>
+<string name="modules_disabled_count_next_reroot">已停用 %1$d / %2$d 個模塊－重啟後重新越獄後生效</string>
+<string name="ksu_modules_enabled_after_reboot">KSU 模塊已啟用－重啟生效</string>
+<string name="ksu_modules_disabled_after_reboot">KSU 模塊已停用－重啟後生效</string>
+<string name="failure">失敗</string>
+<string name="reboot">重新啟動</string>
 </resources>
