@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DirtyFrag</string>
+
+    <string name="menu">選單</string>
+
+    <string name="autorun">自動執行</string>
+    <string name="autorun_desc">開機後自動執行漏洞</string>
+
+    <string name="auto_reboot">熱重啟</string>
+    <string name="auto_reboot_desc">取得Root後進行熱重啟（可能導致異常）</string>
+
+    <string name="ksu_modules">KernelSU 模塊</string>
+    <string name="modules_enabled">模塊已啟用</string>
+
+    <string name="advanced_log">詳情</string>
+    <string name="advanced_log_desc">開啟後，顯示完整日誌</string>
+
+    <string name="run_exploit">執行漏洞</string>
+    <string name="are_you_sure">確定要執行嗎？</string>
+    <string name="running">執行中</string>
+    <string name="rooted">已獲取Root權限</string>
+    <string name="verified">已驗證</string>
+    <string name="verification">驗證中</string>
+
+    <string name="github_page">GitHub頁面</string>
+    <string name="expert_mode">進階模式</string>
+
+    <string name="remove_ksu">移除 KSU/KSUD</string>
+    <string name="click_3_times">點擊 3 次確認</string>
+    <string name="click_2_times">再點擊 2 次</string>
+    <string name="click_1_time">再點擊 1 次</string>
+    <string name="one_more_click">確定移除ROOT?</string>
+    <string name="requires_root">需要 Root</string>
+
+    <string name="import_ksud">導入 KSUD</string>
+
+    <string name="ksu_removed">已移除 KSU/KSUD</string>
+    <string name="removal_failed">移除失敗（錯誤碼 %1$d）</string>
+    <string name="su_not_available">無法獲取su權限</string>
+
+    <string name="no_modules">未安裝模塊</string>
+    <string name="modules_require_root">請先執行漏洞</string>
+
+    <string name="ksud_imported">KSUD 導入成功\n%1$s</string>
+    <string name="invalid_ksud">無效的 KSUD：%1$s</string>
+
+    <string name="open_ksu">開啟 KernelSU</string>
+    <string name="ksu_manager_not_found">找不到 KernelSU 管理器</string>
+
+    <string name="save_log">將日誌儲存到Download</string>
+    <string name="no_browser">找不到瀏覽器</string>
+</resources>
