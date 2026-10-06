@@ -438,7 +438,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
             // -- Github Page row --
             TextView ghRow = new TextView(this);
             ghRow.setBackgroundResource(R.drawable.menu_row_highlight);
-            ghRow.setText("Github Page");
+            ghRow.setText(R.string.github_page);
             ghRow.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.START);
             ghRow.setPadding((int) (20 * md), 0, 0, 0);
             ghRow.setTextColor(0xFFE8E8E8);
@@ -456,7 +456,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
             exRow.setPadding((int) (20 * md), 0, 0, 0);
             TextView exText = new TextView(this);
             exRow.setBackgroundResource(R.drawable.menu_row_highlight);
-            exText.setText("Expert Mode");
+            exText.setText(R.string.expert_mode);
             exText.setTextColor(0xFFE8E8E8);
             exText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15);
             exRow.addView(exText);
@@ -490,13 +490,13 @@ public class MainActivity extends AppCompatActivity implements IReporter {
             rmCol.setPadding((int) (20 * md), 0, (int) (20 * md), 0);
             TextView rmTitle = new TextView(this);
             rmCol.setBackgroundResource(R.drawable.menu_row_highlight);
-            rmTitle.setText("Remove KSU/KSUD");
+            rmTitle.setText(R.string.remove_ksu);
             rmTitle.setGravity(android.view.Gravity.START);
             rmTitle.setTextColor(rootedMenu ? 0xFFE8E8E8 : 0xFF6E6E6E);
             rmTitle.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15);
             rmCol.addView(rmTitle);
             TextView rmSub = new TextView(this);
-            rmSub.setText(rootedMenu ? "Click 3 times" : "Requires root");
+            rmSub.setText(rootedMenu? R.string.click_3_times: R.string.requires_root);
             rmSub.setGravity(android.view.Gravity.START);
             rmSub.setTextColor(rootedMenu ? 0xFF8E8E8E : 0xFF5A5A5A);
             rmSub.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 11);
@@ -507,13 +507,13 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                 v2.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
                 taps[0]++;
                 if (taps[0] == 1) {
-                    rmTitle.setText("Are you sure");
-                    rmSub.setText("Click 2 times");
+                    rmTitle.setText(R.string.are_you_sure);
+		    rmSub.setText(R.string.click_2_times);
                     return;
                 }
                 if (taps[0] == 2) {
-                    rmTitle.setText("One more click");
-                    rmSub.setText("Click 1 time");
+                    rmTitle.setText(R.string.one_more_click);
+		    rmSub.setText(R.string.click_1_time);
                     return;
                 }
                 if (pwRef[0] != null) pwRef[0].dismiss();
@@ -550,7 +550,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                        // -- import ksud Page row --
             TextView ksudRow = new TextView(this);
             ksudRow.setBackgroundResource(R.drawable.menu_row_highlight);
-            ksudRow.setText("Import Ksud");
+            ksudRow.setText(R.string.import_ksud);
             ksudRow.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.START);
             ksudRow.setPadding((int) (20 * md), 0, 0, 0);
             ksudRow.setTextColor(0xFFE8E8E8);
@@ -736,7 +736,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                 binding.switchModules.setEnabled(false);
                 moduleRefresh = false;
                 Log.i(TAG, "modules toggle: no modules installed");
-                binding.modulesSubtitle.setText("No Modules Installed");
+                binding.modulesSubtitle.setText(R.string.no_modules);
             });
             return;
         }
