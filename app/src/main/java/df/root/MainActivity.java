@@ -937,42 +937,128 @@ public class MainActivity extends AppCompatActivity implements IReporter {
 
     private void copyKsud(Uri uri) {
     mExec.execute(() -> {
-        File dest = new File(
-                createDeviceProtectedStorageContext()
-                        .getFilesDir()
-                        .getParentFile(),
-                "ksud");
+        File base = createDeviceProtectedStorageContext()
+                .getFilesDir()
+                .getParentFile();
 
-        try (java.io.InputStream in =
-                     getContentResolver().openInputStream(uri);
-             java.io.OutputStream out =
-                     new FileOutputStream(dest, false)) {
+        File dest = new File(base, "ksud");
+        File tmp = new File(base, "ksud.import.tmp");
 
-            if (in == null) throw new IOException("Cannot open file");
-
-            byte[] buf = new byte[8192];
-            int n;
-
-            while ((n = in.read(buf)) != -1) {
-                out.write(buf, 0, n);
+        try {
+            if (tmp.exists()) {
+                tmp.delete();
             }
 
-            dest.setExecutable(true, true);
+            // 先匯入到暫存檔
+            try (java.io.InputStream in =
+                         getContentResolver().openInputStream(uri);
+                 java.io.OutputStream out =
+                         new FileOutputStream(tmp, false)) {
+
+                if (in == null) {
+                    throw new IOException("Cannot open file");
+                }
+
+                byte[] buf = new byte[8192];
+                int n;
+
+                while ((n = in.read(buf)) != -1) {
+                    out.write(buf, 0, n);
+                }
+            }
+
+            if (!tmp.setExecutable(true, false)) {
+                throw new IOException("chmod failed");
+            }
+
+            // 驗證 ksud --version
+            Process p = new ProcessBuilder(
+                    tmp.getAbsolutePath(),
+                    "--version"
+            )
+                    .redirectErrorStream(true)
+                    .start();
+
+            boolean finished = p.waitFor(
+                    5,
+                    java.util.concurrent.TimeUnit.SECONDS
+            );
+
+            if (!finished) {
+                p.destroyForcibly();
+                throw new IOException("ksud version timeout");
+            }
+
+            java.io.BufferedReader reader =
+                    new java.io.BufferedReader(
+                            new java.io.InputStreamReader(
+                                    p.getInputStream()));
+
+            StringBuilder output = new StringBuilder();
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+                output.append(line).append('\n');
+            }
+
+            String version = output.toString().trim();
+
+            if (p.exitValue() != 0) {
+                throw new IOException(
+                        "ksud --version failed, code "
+                                + p.exitValue());
+            }
+
+            if (version.isEmpty()) {
+                throw new IOException(
+                        "ksud returned empty version");
+            }
+
+            // 驗證成功才覆蓋正式 ksud
+            if (dest.exists() && !dest.delete()) {
+                throw new IOException(
+                        "Cannot replace old ksud");
+            }
+
+            if (!tmp.renameTo(dest)) {
+                throw new IOException(
+                        "Cannot install ksud");
+            }
+
+            if (!dest.setExecutable(true, false)) {
+                throw new IOException(
+                        "chmod final ksud failed");
+            }
+
+            createDeviceProtectedStorageContext()
+                    .getSharedPreferences("dfroot", MODE_PRIVATE)
+                    .edit()
+                    .putBoolean("custom_ksud", true)
+                    .apply();
 
             mMain.post(() ->
-                    Toast.makeText(this, "OK", Toast.LENGTH_SHORT).show());
+                    Toast.makeText(
+                            MainActivity.this,
+                            "KSUD imported\n" + version,
+                            Toast.LENGTH_LONG
+                    ).show());
 
         } catch (Exception e) {
             Log.e(TAG, "copy ksud failed", e);
 
+            if (tmp.exists()) {
+                tmp.delete();
+            }
+
             mMain.post(() ->
-                    Toast.makeText(this,
-                            "Failed: " + e.getMessage(),
-                            Toast.LENGTH_LONG).show());
+                    Toast.makeText(
+                            MainActivity.this,
+                            "Invalid KSUD: " + e.getMessage(),
+                            Toast.LENGTH_LONG
+                    ).show());
         }
     });
 }
-
     private void openKsu() {
         // Try the known manager packages: official KernelSU, KernelSU-Next, APatch.
         String[] candidates = {
