@@ -50,4 +50,13 @@
 
     <string name="save_log">Save log to Downloads</string>
     <string name="no_browser">No browser found</string>
+    <string name="autorun_expert">Autorun (Expert)</string>
+<string name="auto_reboot_expert">Auto reboot (Expert)</string>
+<string name="modules_enabled_next_reroot">Enabled - Active at next reroot</string>
+<string name="modules_disabled_next_reroot">Disabled - No Modules on reroot</string>
+<string name="modules_disabled_count_next_reroot">%1$d of %2$d disabled - applies at next reroot</string>
+<string name="ksu_modules_enabled_after_reboot">KSU modules enabled - applies after reboot</string>
+<string name="ksu_modules_disabled_after_reboot">KSU modules disabled - applies after reboot</string>
+<string name="failure">Failure</string>
+<string name="reboot">Reboot</string>
 </resources>
