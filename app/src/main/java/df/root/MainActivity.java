@@ -143,7 +143,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
         if (exploitPhase.equals("cleanup")
                 && (t.startsWith("* restore") || t.startsWith("* cache dropped"))) {
             cleanupSteps++;
-            setSeg2(Math.min(1f, cleanupSteps / 3f), getString(R.string.verification), 0xFFFFFFFF););
+            setSeg2(Math.min(1f, cleanupSteps / 3f), getString(R.string.verification), 0xFFFFFFFF);
         }
     }
 
@@ -362,7 +362,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
         if (rootedNow || lastSuccess) {
             binding.twoStep.setSeg1(1f, "100%");
             binding.twoStep.setSeg2(1f, getString(R.string.verified), 0xFFFFFFFF);
-    );
+   
         } else if (lastFailed) {
             setFailedState();
         }
