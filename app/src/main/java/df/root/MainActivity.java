@@ -560,7 +560,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                if (pwRef[0] != null) pwRef[0].dismiss();
     ksudPicker.launch("*/*");
 });
-            box.addView(ghRow, new android.widget.LinearLayout.LayoutParams(
+            box.addView(ksudRow, new android.widget.LinearLayout.LayoutParams(
                     android.view.ViewGroup.LayoutParams.MATCH_PARENT, (int) (46 * md)));
 
             // Width: content, but at least 210dp so the popup reads properly.
