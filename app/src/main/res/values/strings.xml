@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DirtyFrag</string>
+
+    <string name="menu">Menu</string>
+
+    <string name="autorun">Autorun</string>
+    <string name="autorun_desc">Runs the exploit after boot</string>
+
+    <string name="auto_reboot">Auto reboot</string>
+    <string name="auto_reboot_desc">Soft reboots after root (Use with caution)</string>
+
+    <string name="ksu_modules">KernelSU Modules</string>
+    <string name="modules_enabled">Enabled - active at next reboot</string>
+
+    <string name="advanced_log">Show advanced log</string>
+    <string name="advanced_log_desc">Shows full log in addition to simple status</string>
+
+    <string name="run_exploit">Run exploit</string>
+    <string name="are_you_sure">Are you sure</string>
+    <string name="running">Running</string>
+    <string name="rooted">Rooted</string>
+    <string name="verified">Verified</string>
+    <string name="verification">Verification</string>
+
+    <string name="github_page">Github Page</string>
+    <string name="expert_mode">Expert Mode</string>
+
+    <string name="remove_ksu">Remove KSU/KSUD</string>
+    <string name="click_3_times">Click 3 times</string>
+    <string name="click_2_times">Click 2 times</string>
+    <string name="click_1_time">Click 1 time</string>
+    <string name="one_more_click">One more click</string>
+    <string name="requires_root">Requires root</string>
+
+    <string name="import_ksud">Import KSUD</string>
+
+    <string name="ksu_removed">KSU/KSUD removed</string>
+    <string name="removal_failed">Removal failed (code %1$d)</string>
+    <string name="su_not_available">su not available</string>
+
+    <string name="no_modules">No Modules Installed</string>
+    <string name="modules_require_root">Requires root (run the exploit first)</string>
+
+    <string name="ksud_imported">KSUD imported\n%1$s</string>
+    <string name="invalid_ksud">Invalid KSUD: %1$s</string>
+
+    <string name="open_ksu">Open KernelSU</string>
+    <string name="ksu_manager_not_found">KernelSU manager not found</string>
+
+    <string name="save_log">Save log to Downloads</string>
+    <string name="no_browser">No browser found</string>
+</resources>
