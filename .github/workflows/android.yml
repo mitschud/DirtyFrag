@@ -78,7 +78,8 @@ jobs:
       - name: Build Release APK
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        run: ./gradlew :app:assembleRelease --stacktrace
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew --no-daemon :app:assembleRelease --stacktrace
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v7
