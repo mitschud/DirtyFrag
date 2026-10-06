@@ -17,7 +17,7 @@
     <string name="advanced_log_desc">開啟後，顯示完整日誌</string>
 
     <string name="run_exploit">越獄</string>
-    <string name="are_you_sure">確定要越獄嗎？</string>
+    <string name="are_you_sure">確定要繼續嗎？</string>
     <string name="running">越獄中</string>
     <string name="rooted">已獲取Root權限</string>
     <string name="verified">已驗證</string>
@@ -59,4 +59,7 @@
 <string name="ksu_modules_disabled_after_reboot">KSU 模塊已停用－重啟後生效</string>
 <string name="failure">失敗</string>
 <string name="reboot">重新啟動</string>
+<string name="force_jailbreak">強制越獄</string>
+<string name="force_jailbreak_done">強制越獄完成</string>
+<string name="force_jailbreak_failed">強制越獄失敗</string>
 </resources>
