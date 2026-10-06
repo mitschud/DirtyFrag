@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+
 public class MainActivity extends AppCompatActivity implements IReporter {
 
     private static final String TAG = "dfroot";
@@ -55,7 +56,12 @@ public class MainActivity extends AppCompatActivity implements IReporter {
     private TextView titleView;
     private boolean updateAvailable;
     private boolean moduleRefresh;
-
+    private final androidx.activity.result.ActivityResultLauncher<String> ksudPicker =
+        registerForActivityResult(
+                new androidx.activity.result.contract.ActivityResultContracts.GetContent(),
+                uri -> {
+                    if (uri != null) installCustomKsud(uri);
+                });
     @Override
     public void report(String msg) {
         Log.i(TAG, msg.trim());
@@ -541,6 +547,21 @@ public class MainActivity extends AppCompatActivity implements IReporter {
             });
             box.addView(rmCol, new android.widget.LinearLayout.LayoutParams(
                     android.view.ViewGroup.LayoutParams.MATCH_PARENT, (int) (58 * md)));
+                       // -- import ksud Page row --
+            TextView ghRow = new TextView(this);
+            ghRow.setBackgroundResource(R.drawable.menu_row_highlight);
+            ghRow.setText("Import Ksud");
+            ghRow.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.START);
+            ghRow.setPadding((int) (20 * md), 0, 0, 0);
+            ghRow.setTextColor(0xFFE8E8E8);
+            ghRow.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15);
+            ghRow.setOnClickListener(v2 -> {
+                v2.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+               if (pwRef[0] != null) pwRef[0].dismiss();
+    ksudPicker.launch("*/*");
+});
+            box.addView(ghRow, new android.widget.LinearLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT, (int) (46 * md)));
 
             // Width: content, but at least 210dp so the popup reads properly.
             box.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
@@ -913,6 +934,44 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                                 (float) anim.getAnimatedValue()))));
         g.start();
     }
+
+    private void copyKsud(Uri uri) {
+    mExec.execute(() -> {
+        File dest = new File(
+                createDeviceProtectedStorageContext()
+                        .getFilesDir()
+                        .getParentFile(),
+                "ksud");
+
+        try (java.io.InputStream in =
+                     getContentResolver().openInputStream(uri);
+             java.io.OutputStream out =
+                     new FileOutputStream(dest, false)) {
+
+            if (in == null) throw new IOException("Cannot open file");
+
+            byte[] buf = new byte[8192];
+            int n;
+
+            while ((n = in.read(buf)) != -1) {
+                out.write(buf, 0, n);
+            }
+
+            dest.setExecutable(true, true);
+
+            mMain.post(() ->
+                    Toast.makeText(this, "OK", Toast.LENGTH_SHORT).show());
+
+        } catch (Exception e) {
+            Log.e(TAG, "copy ksud failed", e);
+
+            mMain.post(() ->
+                    Toast.makeText(this,
+                            "Failed: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show());
+        }
+    });
+}
 
     private void openKsu() {
         // Try the known manager packages: official KernelSU, KernelSU-Next, APatch.
