@@ -21,20 +21,25 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("keystore.jks")
-            storePassword = System.getenv("KEYSTORE_PASSWORD")
-            keyAlias = System.getenv("KEY_ALIAS")
-            keyPassword = System.getenv("KEY_PASSWORD")
+
+            val password = System.getenv("KEYSTORE_PASSWORD")
+
+            storePassword = password
+            keyAlias = "key0"
+            keyPassword = password
         }
     }
 
     buildTypes {
         debug {
-            
         }
+
         release {
             signingConfig = signingConfigs.getByName("release")
+
             isMinifyEnabled = true
             isShrinkResources = true
+
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -44,7 +49,8 @@ android {
 
     applicationVariants.all {
         outputs.all {
-            (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName = "dirtyfrag.apk"
+            (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl)
+                .outputFileName = "dirtyfrag.apk"
         }
     }
 
