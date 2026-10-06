@@ -35,8 +35,6 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           test -n "$KEYSTORE_BASE64" || {
             echo "KEYSTORE_BASE64 is EMPTY"
@@ -48,18 +46,7 @@ jobs:
             exit 1
           }
 
-          test -n "$KEY_ALIAS" || {
-            echo "KEY_ALIAS is EMPTY"
-            exit 1
-          }
-
-          test -n "$KEY_PASSWORD" || {
-            echo "KEY_PASSWORD is EMPTY"
-            exit 1
-          }
-
-          echo "All signing secrets are set"
-          echo "Alias length: ${#KEY_ALIAS}"
+          echo "Signing secrets OK"
 
       - name: Restore release keystore
         env:
@@ -69,41 +56,21 @@ jobs:
             | base64 --decode \
             > app/keystore.jks
 
-          echo "Keystore size: $(stat -c%s app/keystore.jks) bytes"
-
           test -s app/keystore.jks || {
             echo "keystore.jks is empty"
             exit 1
           }
 
+          echo "Keystore size: $(stat -c%s app/keystore.jks) bytes"
+
       - name: Verify keystore
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
           keytool -list \
             -keystore app/keystore.jks \
             -storepass "$KEYSTORE_PASSWORD" \
-            -alias "$KEY_ALIAS"
-
-      - name: Verify private key
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          keytool -importkeystore \
-            -srckeystore app/keystore.jks \
-            -srcstorepass "$KEYSTORE_PASSWORD" \
-            -srcalias "$KEY_ALIAS" \
-            -srckeypass "$KEY_PASSWORD" \
-            -destkeystore /tmp/test-keystore.p12 \
-            -deststoretype PKCS12 \
-            -deststorepass test123456 \
-            -destkeypass test123456 \
-            -noprompt
-
-          rm -f /tmp/test-keystore.p12
+            -alias key0
 
       - name: Grant Gradle permission
         run: chmod +x gradlew
@@ -111,8 +78,6 @@ jobs:
       - name: Build Release APK
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew :app:assembleRelease --stacktrace
 
       - name: Upload Release APK
