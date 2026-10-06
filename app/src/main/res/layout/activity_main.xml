@@ -31,7 +31,7 @@
                 android:layout_gravity="end|center_vertical"
                 android:layout_marginEnd="16dp"
                 android:background="@drawable/bg_circle"
-                android:contentDescription="Menu"
+                android:contentDescription="@string/menu"
                 android:scaleType="center"
                 android:src="@drawable/ic_more" />
 
@@ -92,7 +92,7 @@
                         android:id="@+id/tvAutorunTitle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Autorun"
+                        android:text="@string/autorun"
                         android:textColor="#FFFFFFFF"
                         android:textSize="16sp" />
 
@@ -100,7 +100,7 @@
                         android:id="@+id/tvAutorunDesc"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Runs the exploit after boot"
+                        android:text="@string/autorun_desc"
                         android:textColor="#FF9E9E9E"
                         android:textSize="12sp" />
 
@@ -132,7 +132,7 @@
                         android:id="@+id/tvRebootTitle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Auto reboot"
+                        android:text="@string/auto_reboot"
                         android:textColor="#FFFFFFFF"
                         android:textSize="16sp" />
 
@@ -140,7 +140,7 @@
                         android:id="@+id/tvRebootDesc"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Soft reboots after root (Use with caution)"
+                        android:text="@string/auto_reboot_desc"
                         android:textColor="#FF9E9E9E"
                         android:textSize="12sp" />
 
@@ -193,7 +193,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="KernelSU Modules"
+                    android:text="ksu_modules"
                     android:textColor="#FFFFFFFF"
                     android:textSize="16sp" />
 
@@ -201,7 +201,7 @@
                     android:id="@+id/modulesSubtitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Enabled - active at next reboot"
+                    android:text="modules_enabled"
                     android:textColor="#FF9E9E9E"
                     android:textSize="12sp" />
 
@@ -253,14 +253,14 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Show advanced log"
+                    android:text="advanced_log"
                     android:textColor="#FFFFFFFF"
                     android:textSize="16sp" />
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Shows full log in addition to simple status"
+                    android:text="advanced_log_desc"
                     android:textColor="#FF9E9E9E"
                     android:textSize="12sp" />
 
@@ -360,7 +360,7 @@
         android:paddingEnd="28dp"
         android:elevation="12dp"
         android:stateListAnimator="@null"
-        android:text="Run exploit"
+        android:text="run_exploit"
         android:textSize="16sp"
         android:backgroundTint="#FF7A7A7A"
         android:textColor="#FFE0E0E0"
@@ -407,3 +407,4 @@
         app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
+
