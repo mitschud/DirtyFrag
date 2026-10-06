@@ -535,8 +535,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                                     + "rm -f /data/user_de/0/df.root/ksud"});
                     int rc = p.waitFor();
                     mMain.post(() -> {
-                        Toast.makeText(MainActivity.this, rc == 0 ? getString(R.string.ksu_ksud_removed) : 				      	 	getString(R.string.removal_failed_code, rc), Toast.LENGTH_SHORT).show();
-                    });
+                      Toast.makeText(MainActivity.this, rc == 0 ? getString(R.string.ksu_removed) : getString(R.string.removal_failed, rc), Toast.LENGTH_SHORT).show();                    });
                 } catch (Exception e) {
                     Toast.makeText(MainActivity.this, R.string.su_not_available, Toast.LENGTH_SHORT).show();
                 }
@@ -717,7 +716,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                 binding.switchModules.setChecked(false);
                 binding.switchModules.setEnabled(false);
                 moduleRefresh = false;
-                binding.modulesSubtitle.setText("not found".equals(suState) ? getString(R.string.requires_root_run_exploit_first) : 		getString(R.string.no_modules_installed));
+                binding.modulesSubtitle.setText("not found".equals(suState) ? getString(R.string.modules_require_root) : 		        getString(R.string.no_modules));
             });
             return;
         }
@@ -1065,7 +1064,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                 return;
             }
         }
-        Toast.makeText(this, R.string.kernel_su_manager_not_found, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, R.string.ksu_manager_not_found, Toast.LENGTH_SHORT).show();
     }
 
     private static int mixColor(int a, int b, float t) {
@@ -1138,7 +1137,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
         try {
             startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
         } catch (Exception e) {
-            Toast.makeText(this, R.string.no_browser_found, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.no_browser, Toast.LENGTH_SHORT).show();
         }
     }
 
