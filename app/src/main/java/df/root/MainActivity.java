@@ -543,7 +543,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
             box.addView(rmCol, new android.widget.LinearLayout.LayoutParams(
                     android.view.ViewGroup.LayoutParams.MATCH_PARENT, (int) (58 * md)));
                        // -- import ksud Page row --
-            if (isXiaomiFamily()) {
+         
     TextView ksudRow = new TextView(this);
     ksudRow.setBackgroundResource(R.drawable.menu_row_highlight);
     ksudRow.setText(R.string.import_ksud);
@@ -557,26 +557,9 @@ public class MainActivity extends AppCompatActivity implements IReporter {
         ksudPicker.launch("*/*");
     });
     box.addView(ksudRow, new android.widget.LinearLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, (int) (46 * md)));
-}
-if (isXiaomiFamily()) {
-    TextView forceRow = new TextView(this);
-    forceRow.setBackgroundResource(R.drawable.menu_row_highlight);
-    forceRow.setText(R.string.force_jailbreak);
-    forceRow.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.START);
-    forceRow.setPadding((int) (20 * md), 0, 0, 0);
-    forceRow.setTextColor(0xFFE8E8E8);
-    forceRow.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15);
 
-    forceRow.setOnClickListener(v2 -> {
-        v2.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
-        if (pwRef[0] != null) pwRef[0].dismiss();
-        forceXiaomiJailbreak();
-    });
 
-    box.addView(forceRow, new android.widget.LinearLayout.LayoutParams(
-            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-            (int) (46 * md)));
-}
+
 
             // Width: content, but at least 210dp so the popup reads properly.
             box.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
@@ -946,117 +929,8 @@ if (isXiaomiFamily()) {
                                 (float) anim.getAnimatedValue()))));
         g.start();
     }
-private boolean isXiaomiFamily() {
-    String manufacturer = android.os.Build.MANUFACTURER == null ? "" : android.os.Build.MANUFACTURER.trim().toUpperCase(java.util.Locale.ROOT);
-    return manufacturer.equals("XIAOMI") || manufacturer.equals("Xiaomi") || manufacturer.equals("REDMI")|| manufacturer.equals("Redmi")|| manufacturer.equals("POCO");
-}
 
-private void forceXiaomiJailbreak() {
-    if (!isXiaomiFamily() || running) return;
-
-    running = true;
-
-    binding.outputView.setText("");
-    logBuffer.setLength(0);
-    if (lastLogFile != null && lastLogFile.exists()) lastLogFile.delete();
-    appendLog(fwToken());
-    updateLogVisibility();
-
-    mExec.execute(() -> {
-        try {
-            ExploitRunner.stageKsud(MainActivity.this, MainActivity.this);
-
-            File base = createDeviceProtectedStorageContext().getFilesDir().getParentFile();
-            File ksud = new File(base, "ksud");
-            File ksudLog = new File(base, "ksulog.txt");
-
-            if (ksudLog.exists()) ksudLog.delete();
-
-            report("\n=== force jailbreak ===\n");
-            report("manufacturer: " + android.os.Build.MANUFACTURER + "\n");
-            report("ksud: " + ksud.getAbsolutePath() + "\n");
-
-            Process p = new ProcessBuilder(
-                    "/system/bin/service",
-                    "call",
-                    "miui.mqsas.IMQSNative",
-                    "21",
-                    "i32", "1",
-                    "s16", ksud.getAbsolutePath(),
-                    "i32", "1",
-                    "s16", "late-load",
-                    "s16", ksudLog.getAbsolutePath(),
-                    "i32", "60"
-            ).redirectErrorStream(true).start();
-
-            java.io.BufferedReader reader = new java.io.BufferedReader(
-                    new java.io.InputStreamReader(p.getInputStream()));
-
-            StringBuilder serviceOutput = new StringBuilder();
-            String line;
-
-            while ((line = reader.readLine()) != null) {
-                serviceOutput.append(line).append('\n');
-            }
-
-            reader.close();
-
-            int rc = p.waitFor();
-
-            if (serviceOutput.length() > 0) {
-                report(serviceOutput.toString());
-            }
-
-            for (int i = 0; i < 20 && (!ksudLog.exists() || ksudLog.length() == 0); i++) {
-                Thread.sleep(250);
-            }
-
-            if (ksudLog.exists() && ksudLog.length() > 0) {
-                try (java.io.FileInputStream in = new java.io.FileInputStream(ksudLog);
-                     java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
-
-                    byte[] buf = new byte[8192];
-                    int n;
-
-                    while ((n = in.read(buf)) != -1) {
-                        out.write(buf, 0, n);
-                    }
-
-                    String log = out.toString(java.nio.charset.StandardCharsets.UTF_8.name());
-
-                    if (!log.trim().isEmpty()) {
-                        report("\n=== ksud log ===\n");
-                        report(log + "\n");
-                    }
-                }
-            }
-
-            report("service call rc=" + rc + "\n");
-
-            mMain.post(() -> {
-                running = false;
-                Toast.makeText(MainActivity.this,
-                        rc == 0 ? R.string.force_jailbreak_done : R.string.force_jailbreak_failed,
-                        Toast.LENGTH_SHORT).show();
-                updateLogVisibility();
-                mExec.execute(this::refreshModuleState);
-            });
-
-        } catch (Exception e) {
-            Log.e(TAG, "force jailbreak failed", e);
-            report("\nforce jailbreak failed: " + e + "\n");
-
-            mMain.post(() -> {
-                running = false;
-                Toast.makeText(MainActivity.this,
-                        R.string.force_jailbreak_failed,
-                        Toast.LENGTH_SHORT).show();
-                updateLogVisibility();
-            });
-        }
-    });
-}
-    private void copyKsud(Uri uri) {
+  private void copyKsud(Uri uri) {
     mExec.execute(() -> {
         File base = createDeviceProtectedStorageContext()
                 .getFilesDir()
@@ -1066,89 +940,60 @@ private void forceXiaomiJailbreak() {
         File tmp = new File(base, "ksud.import.tmp");
 
         try {
-            if (tmp.exists()) {
-                tmp.delete();
+            if (tmp.exists() && !tmp.delete()) {
+                throw new IOException("Cannot remove old temporary KSUD");
             }
 
-            
-            try (java.io.InputStream in =
-                         getContentResolver().openInputStream(uri);
-                 java.io.OutputStream out =
-                         new FileOutputStream(tmp, false)) {
-
+            try (java.io.InputStream in = getContentResolver().openInputStream(uri);
+                 java.io.OutputStream out = new FileOutputStream(tmp, false)) {
                 if (in == null) {
                     throw new IOException("Cannot open file");
                 }
 
                 byte[] buf = new byte[8192];
                 int n;
-
+                long total = 0;
                 while ((n = in.read(buf)) != -1) {
                     out.write(buf, 0, n);
+                    total += n;
+                }
+                out.flush();
+
+                if (total < 4096) {
+                    throw new IOException("KSUD file is too small");
                 }
             }
 
+            // Do not execute ksud here. On modern Android an untrusted app may
+            // be denied execve() for binaries in its writable app-data dir.
+            // Instead, perform a basic ELF sanity check and let DirtyFrag's
+            // privileged helper execute the binary later.
+            try (java.io.FileInputStream in = new java.io.FileInputStream(tmp)) {
+                byte[] magic = new byte[4];
+                if (in.read(magic) != 4
+                        || magic[0] != 0x7f
+                        || magic[1] != 'E'
+                        || magic[2] != 'L'
+                        || magic[3] != 'F') {
+                    throw new IOException("Not an ELF executable");
+                }
+            }
+
+            if (!tmp.setReadable(true, false)) {
+                throw new IOException("chmod read failed");
+            }
             if (!tmp.setExecutable(true, false)) {
-                throw new IOException("chmod failed");
+                throw new IOException("chmod exec failed");
             }
 
-            // 驗證 ksud --version
-            Process p = new ProcessBuilder(
-                    tmp.getAbsolutePath(),
-                    "--version"
-            )
-                    .redirectErrorStream(true)
-                    .start();
-
-            boolean finished = p.waitFor(
-                    5,
-                    java.util.concurrent.TimeUnit.SECONDS
-            );
-
-            if (!finished) {
-                p.destroyForcibly();
-                throw new IOException("ksud version timeout");
-            }
-
-            java.io.BufferedReader reader =
-                    new java.io.BufferedReader(
-                            new java.io.InputStreamReader(
-                                    p.getInputStream()));
-
-            StringBuilder output = new StringBuilder();
-            String line;
-
-            while ((line = reader.readLine()) != null) {
-                output.append(line).append('\n');
-            }
-
-            String version = output.toString().trim();
-
-            if (p.exitValue() != 0) {
-                throw new IOException(
-                        "ksud --version failed, code "
-                                + p.exitValue());
-            }
-
-            if (version.isEmpty()) {
-                throw new IOException(
-                        "ksud returned empty version");
-            }
-
-            // 驗證成功才覆蓋正式 ksud
             if (dest.exists() && !dest.delete()) {
-                throw new IOException(
-                        "Cannot replace old ksud");
+                throw new IOException("Cannot replace old ksud");
             }
-
             if (!tmp.renameTo(dest)) {
-                throw new IOException(
-                        "Cannot install ksud");
+                throw new IOException("Cannot install ksud");
             }
-
-            if (!dest.setExecutable(true, false)) {
-                throw new IOException(
-                        "chmod final ksud failed");
+            if (!dest.setReadable(true, false) || !dest.setExecutable(true, false)) {
+                throw new IOException("chmod final ksud failed");
             }
 
             createDeviceProtectedStorageContext()
@@ -1157,29 +1002,25 @@ private void forceXiaomiJailbreak() {
                     .putBoolean("custom_ksud", true)
                     .apply();
 
-            mMain.post(() ->
-                    Toast.makeText(
-                            MainActivity.this,
-                            "KSUD imported\n" + version,
-                            Toast.LENGTH_LONG
-                    ).show());
+            mMain.post(() -> Toast.makeText(
+                    MainActivity.this,
+                    "KSUD imported: " + dest.length() + " bytes",
+                    Toast.LENGTH_LONG
+            ).show());
 
         } catch (Exception e) {
             Log.e(TAG, "copy ksud failed", e);
+            if (tmp.exists()) tmp.delete();
 
-            if (tmp.exists()) {
-                tmp.delete();
-            }
-
-            mMain.post(() ->
-                    Toast.makeText(
-                            MainActivity.this,
-                            "Invalid KSUD: " + e.getMessage(),
-                            Toast.LENGTH_LONG
-                    ).show());
+            mMain.post(() -> Toast.makeText(
+                    MainActivity.this,
+                    "Invalid KSUD: " + e.getMessage(),
+                    Toast.LENGTH_LONG
+            ).show());
         }
     });
 }
+
     private void openKsu() {
         // Try the known manager packages: official KernelSU, KernelSU-Next, APatch.
         String[] candidates = {
