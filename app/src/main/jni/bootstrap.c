@@ -9,7 +9,8 @@
 #include <unistd.h>
 
 #define BLKROSET   0x125d
-#define KSUD       "/data/user_de/0/df.root/ksud"
+#define KSUD_STAGE "/data/user_de/0/df.root/ksud"
+#define KSUD       "/data/adb/ksud"
 #define PREFS_PATH "/data/user_de/0/df.root/shared_prefs/dfroot.xml"
 #define MODULES_DIR "/data/adb/modules"
 
@@ -117,12 +118,46 @@ static int set_partitions_ro(void)
     return 0;
 }
 
-static int run(char *const argv[])
+static int late_load_running(void)
+{
+    DIR *d = opendir("/proc");
+    if (!d)
+        return 0;
+    struct dirent *e;
+    char path[64], buf[256];
+    int found = 0;
+    while ((e = readdir(d)) != NULL) {
+        char *end;
+        strtol(e->d_name, &end, 10);
+        if (*end) continue;
+        snprintf(path, sizeof(path), "/proc/%s/cmdline", e->d_name);
+        int fd = open(path, O_RDONLY | O_CLOEXEC);
+        if (fd < 0) continue;
+        int n = read(fd, buf, sizeof(buf) - 1);
+        close(fd);
+        if (n <= 0) continue;
+        buf[n] = '\0';
+        for (int i = 0; i < n; i++)
+            if (!buf[i]) buf[i] = ' ';
+        if (strstr(buf, "ksud") && strstr(buf, "late-load")) {
+            found = 1;
+            break;
+        }
+    }
+    closedir(d);
+    return found;
+}
+
+static int run_ctx(const char *ctx, char *const argv[])
 {
     pid_t pid = fork();
     if (pid < 0)
         return -1;
     if (pid == 0) {
+        if (ctx) {
+            int fd = open("/proc/self/attr/exec", O_WRONLY);
+            if (fd >= 0) { write(fd, ctx, strlen(ctx)); close(fd); }
+        }
         execv(argv[0], argv);
         _exit(127);
     }
@@ -185,15 +220,16 @@ int main(void)
     }
 
     touch("/dev/dfm5");
-    char **late_load;
-    if (soft_reboot)
-        late_load = (char *[]){ KSUD, "late-load", "--package-name", su_manager, "--soft-reboot", NULL };
-    else
-        late_load = (char *[]){ KSUD, "late-load", "--package-name", su_manager, NULL };
-    if (run(late_load) == 0)
+    if (run_ctx(NULL, (char *[]){ KSUD_STAGE, "late-load", "--package-name", su_manager, NULL }) == 0) {
         touch("/dev/dfm6");
-    else
+        if (soft_reboot) {
+            while (late_load_running()) sleep(1);
+            run_ctx("u:r:ksu:s0", (char *[]){ KSUD, "soft-reboot", NULL });
+        }
+    } else {
         touch("/dev/dfme2");
+    }
 
+    run_ctx(NULL, (char *[]){ "/system/bin/rmmod", "dfroot", NULL });
     return 0;
 }

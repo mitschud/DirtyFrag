@@ -17,6 +17,11 @@ typedef int  (*kern_path_t)(const char *, unsigned int, struct path *);
 typedef int  (*invalidate_t)(struct address_space *);
 typedef void (*path_put_t)(const struct path *);
 
+static struct kprobe defex_enforce_kp;
+static struct kprobe defex_umh_kp;
+static int defex_enforce_ok;
+static int defex_umh_ok;
+
 static int null_pre_handler(struct kprobe *p, struct pt_regs *regs)
 {
     (void)p;
@@ -36,23 +41,20 @@ static int __nocfi __init dfroot_init(void)
     umh_exec_t  umh_exec;
     bool *selinux_state;
     struct kprobe kln_kp;
-    struct kprobe defex_enforce_kp;
-    struct kprobe defex_umh_kp;
-    int defex_enforce_ok, defex_umh_ok;
     void *info;
     int ret;
 
-    static const char sh[]        = "/system/bin/sh";
-    static const char bootstrap[] = "/data/user_de/0/df.root/bootstrap";
-    static char cmd[512];
+    // UMH command to run
+    static const char sh[] = "/system/bin/sh";
     static char *envp[] = { "PATH=/system/bin", NULL };
-    static char *argv[] = { (char *)sh, "-c", cmd, NULL };
-    snprintf(cmd, sizeof(cmd),
-             "rmmod oplus_secure_harden 2>/dev/null;"          //
-             " rmmod oplus_security_keventupload 2>/dev/null;" // Oppo/OnePlus
-             " rmmod oplus_security_guard 2>/dev/null;"        //
-             " touch /dev/dfm0; exec %s", bootstrap);
+    static char *argv[] = { (char *)sh, "-c",
+        "touch /dev/dfm0;"
+        " rmmod oplus_secure_harden 2>/dev/null;"         //
+        " rmmod oplus_security_keventupload 2>/dev/null;" // Oppo/OnePlus
+        " rmmod oplus_security_guard 2>/dev/null",        //
+        NULL };
 
+    // Symbol finder
     kln_kp = (struct kprobe){ .symbol_name = "kallsyms_lookup_name" };
     if (register_kprobe(&kln_kp) < 0) {
         pr_err("dfroot: kallsyms_lookup_name not found\n");
@@ -104,31 +106,34 @@ static int __nocfi __init dfroot_init(void)
     else
         pr_info("dfroot: task_defex_user_exec hooked\n");
 
-    // Launch bootstrap
+    // Run UMH command
     umh_setup = (umh_setup_t)get_addr("call_usermodehelper_setup");
     umh_exec  = (umh_exec_t)get_addr("call_usermodehelper_exec");
     if (!umh_setup || !umh_exec) {
         pr_err("dfroot: usermodehelper symbols missing (setup=%px exec=%px)\n",
                umh_setup, umh_exec);
-        goto done;
+        return 0;
     }
 
     info = umh_setup(sh, argv, envp, GFP_KERNEL, NULL, NULL, NULL);
     if (!info) {
         pr_err("dfroot: usermodehelper_setup: returned NULL\n");
-        goto done;
+        return 0;
     }
-    /* bypass CONFIG_STATIC_USERMODEHELPER_PATH="" overriding path to "" */
+    // bypass CONFIG_STATIC_USERMODEHELPER_PATH="" overriding path to ""
     ((struct subprocess_info *)info)->path = sh;
 
     ret = umh_exec(info, UMH_WAIT_PROC);
-    pr_info("dfroot: usermodehelper_exec(%s) returned %d\n", bootstrap, ret);
-
-done:
-    if (defex_enforce_ok) unregister_kprobe(&defex_enforce_kp);
-    if (defex_umh_ok)   unregister_kprobe(&defex_umh_kp);
-    return -E2BIG; /* return any error to unload module */
+    pr_info("dfroot: usermodehelper_exec returned %d\n", ret);
+    
+    return 0;
 }
 
-/* no module_exit: we never unload; saves .exit sections */
+static void __exit dfroot_exit(void)
+{
+    if (defex_enforce_ok) unregister_kprobe(&defex_enforce_kp);
+    if (defex_umh_ok)     unregister_kprobe(&defex_umh_kp);
+}
+
 module_init(dfroot_init);
+module_exit(dfroot_exit);
