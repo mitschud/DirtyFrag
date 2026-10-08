@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.11
+
+Based on upstream DFRoot 4.1 (upstream 3.0 - 4.1 merged into this fork).
+
+### Engine
+- Upstream v4.0 merged: OPPO/OnePlus bypasses, `rmmod` of the OPPO security modules before the
+  bootstrap handoff, kprobe cleanup, and the reworked phase markers
+- Upstream v4.1 merged: soft reboot now works with every KernelSU derivative. `dfroot.ko` keeps
+  its kprobes in static globals and gains a real `module_exit`, so the bootstrap can `rmmod dfroot`
+  once late-load is done instead of the module self-unloading by failing its init, and the ksud
+  `soft-reboot` is execed in the `u:r:ksu:s0` context only after the late-load process has exited
+- The eight embedded kernel modules were rebuilt from v4.1 source, so the shipped modules match
+  the marker table the app reads
+- The progress bar is strictly linear now: the run bar reaches 100% when the module is in, and
+  only then does the verification bar start moving
+- Build moved to AGP 9.4.0 with compile/target SDK 37
+
+### DirtyFrag
+- Every run log starts with a device banner - manufacturer, model, Android version, security patch
+  level and kernel version - so a pasted log can be triaged without asking follow-up questions
+- The log header is a plain "SYSTEM" line instead of a firmware build token
+- The launcher icon is a vector (adaptive foreground, background and monochrome) instead of five
+  PNG densities: the APK is 2.24 MB instead of 2.91 MB
+- BakaSU is listed as a manager for non-Samsung devices, with Auto reboot required off there
+
 ## 1.10
 
 Based on upstream DFRoot 3.3 (upstream 3.0 - 3.3 merged into this fork).

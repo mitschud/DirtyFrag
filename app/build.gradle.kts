@@ -4,14 +4,14 @@ plugins {
 
 android {
     namespace = "df.root"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "df.root"
         minSdk = 32
-        targetSdk = 36
-        versionCode = 30
-        versionName = "1.10"
+        targetSdk = 37
+        versionCode = 31
+        versionName = "1.11"
 
         ndk {
             abiFilters += listOf("arm64-v8a")
@@ -42,12 +42,14 @@ android {
         }
     }
 
-    applicationVariants.all {
-        outputs.all {
-            (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName = "dirtyfrag.apk"
+// AGP 9 removed the old applicationVariants API; this is the replacement.
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.forEach { output ->
+            output.outputFileName.set("dirtyfrag.apk")
         }
     }
-
+}
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11

@@ -19,6 +19,7 @@ apk/
 
 # LKM build artifacts
 lkm/*.cmd
+lkm/*.o.d
 lkm/*.o
 lkm/*.mod
 lkm/*.mod.c
@@ -37,3 +38,4 @@ app/src/main/jni/ko/*.ko
 
 # staged release APK for the GitHub release asset
 /release/
+__pycache__/
