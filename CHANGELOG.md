@@ -2,12 +2,16 @@
 
 ## 1.11
 
-Based on upstream DFRoot 4.0 (upstream 3.0 - 4.0 merged into this fork).
+Based on upstream DFRoot 4.1 (upstream 3.0 - 4.1 merged into this fork).
 
 ### Engine
 - Upstream v4.0 merged: OPPO/OnePlus bypasses, `rmmod` of the OPPO security modules before the
   bootstrap handoff, kprobe cleanup, and the reworked phase markers
-- The eight embedded kernel modules were rebuilt from v4.0 source, so the shipped modules match
+- Upstream v4.1 merged: soft reboot now works with every KernelSU derivative. `dfroot.ko` keeps
+  its kprobes in static globals and gains a real `module_exit`, so the bootstrap can `rmmod dfroot`
+  once late-load is done instead of the module self-unloading by failing its init, and the ksud
+  `soft-reboot` is execed in the `u:r:ksu:s0` context only after the late-load process has exited
+- The eight embedded kernel modules were rebuilt from v4.1 source, so the shipped modules match
   the marker table the app reads
 - The progress bar is strictly linear now: the run bar reaches 100% when the module is in, and
   only then does the verification bar start moving

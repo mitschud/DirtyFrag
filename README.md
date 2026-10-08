@@ -104,9 +104,11 @@ keytool -genkeypair -v -keystore app/keystore.jks -alias dirtyfrag \
 ```
 
 The eight prebuilt kernel modules are committed under `app/src/main/jni/ko/`. Upstream gitignores
-them and builds them per-KMI in CI; this fork has no CI, so they are committed to keep a clone
-buildable. They are the upstream v3.3 blobs. To build your own, use upstream's `make` / podman DDK
-flow, or carve them out of an upstream release APK.
+them and builds them per-KMI in CI; this fork commits them so a plain clone builds without a DDK
+toolchain. They are built by this repo's `Build` workflow (the `LKMs / <kmi>` jobs) from the
+current `lkm/dfroot.c`, so they must be rebuilt whenever that file changes: run the workflow,
+download the `df-lkm-<kmi>` artifacts and drop them in this directory. To build them yourself
+instead, use upstream's `make` / podman DDK flow.
 
 ## How it works
 
