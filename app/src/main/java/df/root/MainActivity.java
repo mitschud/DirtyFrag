@@ -267,19 +267,11 @@ public class MainActivity extends AppCompatActivity implements IReporter {
         return h;
     }
 
-    /** Short firmware token from the build display string, e.g. "S931BXXU1AYB2"
-     *  - everything that is not the model-prefixed version is dropped. */
-    private static String fwToken() {
-        String d = android.os.Build.DISPLAY;
-        String model = android.os.Build.MODEL == null
-                ? "" : android.os.Build.MODEL.replace("SM-", "").trim();
-        if (d == null || d.trim().isEmpty()) return "UNKNOWN";
-        if (model.isEmpty()) return d.trim();
-        java.util.regex.Matcher m = java.util.regex.Pattern
-                .compile("[A-Z0-9]*" + java.util.regex.Pattern.quote(model) + "[A-Z0-9]*")
-                .matcher(d);
-        return m.find() ? m.group() : d.trim();
-    }
+    /** The log's first line. Deliberately generic: the device banner that
+     *  ExploitRunner prints immediately below it already carries manufacturer,
+     *  model, Android version, patch level and kernel version, so the old
+     *  model-prefixed firmware token ("S931BXXU1AYB2") was redundant noise. */
+    private static final String LOG_HEADER = "SYSTEM";
 
     /** Header lines render big, white and bold; the rest is dimmed. */
     private boolean isHeader(String line) {
@@ -287,7 +279,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                 || line.equals("EXPLOIT (PATCHING FILES)")
                 || line.equals("INIT") || line.equals("CLEANUP")
                 || line.startsWith("EXPLOIT FAILED")
-                || line.equals(fwToken());
+                || line.equals(LOG_HEADER);
     }
 
     /** Header lines render big, white and bold; the rest is dimmed. */
@@ -354,7 +346,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
         setContentView(binding.getRoot());
 
         // Version tag flowing right after the header title.
-        SpannableString title = new SpannableString("DirtyFrag 1.10");
+        SpannableString title = new SpannableString("DirtyFrag 1.11");
         pillSpan = new VersionPillSpan(0.45f);
         title.setSpan(pillSpan, 10, title.length(),
                 SpannableString.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -435,14 +427,14 @@ public class MainActivity extends AppCompatActivity implements IReporter {
         String last = readLastLog();
         boolean hasLastLog = !last.isEmpty();
         if (hasLastLog) {
-            appendLog(fwToken());
+            appendLog(LOG_HEADER);
             for (String l : last.split("\n")) {
                 String t = stripHeader(l.trim());
-                // Skip stale headers, old result lines and duplicate fw lines.
+                // Skip stale headers, old result lines and duplicate header lines.
                 if (t.isEmpty()
                         || t.equals("LAST RUN")
                         || t.equals("EXPLOIT SUCCESS")
-                        || t.equals(fwToken())) {
+                        || t.equals(LOG_HEADER)) {
                     continue;
                 }
                 appendLog(t);
@@ -504,7 +496,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
             createDeviceProtectedStorageContext()
                     .getSharedPreferences("dfroot", MODE_PRIVATE)
                     .edit().putBoolean("last_run_success", false).apply();
-            appendLog(fwToken());
+            appendLog(LOG_HEADER);
             binding.twoStep.reset();
             setCompactButton(true, false);
             updateLogVisibility();
