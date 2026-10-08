@@ -8,7 +8,6 @@
          installed app and keeps only the ones that actually ship libksud.so, so a
          fixed <queries> allow-list is no longer enough. -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
-
     <application
         android:label="DirtyFrag"
         android:allowBackup="false"

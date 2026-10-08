@@ -160,39 +160,40 @@ static int disable_modules(void)
 
 int main(void)
 {
+    touch("/dev/dfm1");
     char su_manager[256];
     int soft_reboot, disable_mods;
     if (read_prefs(su_manager, sizeof(su_manager), &soft_reboot, &disable_mods) != 0) {
         touch("/dev/dfme0");
         return 1;
     }
-    touch("/dev/dfm1");
 
-    touch("/dev/dfm7");
-    if (adopt_zygote_env() == 0)
-        touch("/dev/dfm2");
-    else
+    touch("/dev/dfm2");
+    if (adopt_zygote_env())
         touch("/dev/dfmw0");
 
-    touch("/dev/dfm8");
-    if (set_partitions_ro() == 0)
-        touch("/dev/dfm3");
-    else
+    touch("/dev/dfm3");
+    if (set_partitions_ro())
         touch("/dev/dfmw1");
 
-    if (disable_mods && disable_modules() != 0)
-        touch("/dev/dfmw2");
+    if (disable_mods) {
+        touch("/dev/dfm4");
+        if (disable_modules()) {
+            touch("/dev/dfme1");
+            return 1;
+        }
+    }
 
-    touch("/dev/dfm4");
+    touch("/dev/dfm5");
     char **late_load;
     if (soft_reboot)
         late_load = (char *[]){ KSUD, "late-load", "--package-name", su_manager, "--soft-reboot", NULL };
     else
         late_load = (char *[]){ KSUD, "late-load", "--package-name", su_manager, NULL };
     if (run(late_load) == 0)
-        touch("/dev/dfm5");
+        touch("/dev/dfm6");
     else
-        touch("/dev/dfme1");
+        touch("/dev/dfme2");
 
     return 0;
 }

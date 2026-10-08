@@ -100,8 +100,8 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                 // Drop internal patch/hook details and raw result markers: the
                 // app renders its own SETUP/EXPLOIT/INIT/CLEANUP headers and
                 // synthesizes a single failure line instead of the raw one.
-                if (t.contains("hook=") || t.matches("\\*+SUCCESS\\*+")
-                        || t.startsWith("***FAILED***")) {
+                if (t.contains("hook=") || t.equals("ksud start: SUCCESS")
+                        || t.contains("ERROR - ")) {
                     continue;
                 }
                 // Strip hex file offsets: ".../libc.so+0x6e8b0" -> ".../libc.so"
@@ -127,8 +127,10 @@ public class MainActivity extends AppCompatActivity implements IReporter {
      *  which reports progress by touching /dev/dfm* nodes that exp.c polls for 70 seconds. */
     private void driveProgress(String t) {
         if (t.isEmpty()) return;
-        if (t.startsWith("***FAILED***")) {
-            lastFailReason = t.substring("***FAILED***:".length()).trim();
+        // v4.0 marker table: a failure is reported as "<stage>: ERROR - <reason>".
+        int err = t.indexOf("ERROR - ");
+        if (err >= 0) {
+            lastFailReason = t.substring(err + "ERROR - ".length()).trim();
         }
         switch (t) {
             case "=== setup ===":
@@ -170,38 +172,34 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                 setSeg1(0.95f);
             }
         }
-        // Run bar finishes here - the module is loaded, nothing left to patch.
-        if (t.startsWith("libc++: mutex acquired")) {
+        // Run bar finishes here - the module is in, nothing left to patch.
+        if (t.startsWith("libc++: loading custom module")) {
             setSeg1(1f);
         }
         // Verification bar: one step per bootstrap marker (see exp.c markers[]).
-        if (t.startsWith("dfroot: launching bootstrap")) {
+        // v4.0 renamed every marker and dropped the "env adopted" / "partitions set
+        // ro" confirmations, so these steps are re-keyed to the new table.
+        if (t.startsWith("kernel module: launching bootstrap")) {
             setSeg2(0.14f, "Verification", 0xFFFFFFFF);
         }
-        if (t.startsWith("bootstrap: prefs loaded")) {
+        if (t.startsWith("bootstrap: loading app preferences file")) {
             setSeg2(0.28f, "Verification", 0xFFFFFFFF);
         }
-        if (t.startsWith("bootstrap: adopting zygote env")) {
+        if (t.startsWith("bootstrap: cloning zygote env")
+                || t.startsWith("bootstrap: WARNING - clone zygote env failed")) {
             setSeg2(0.42f, "Verification", 0xFFFFFFFF);
         }
-        if (t.startsWith("bootstrap: env adopted")
-                || t.startsWith("bootstrap: WARNING: adopt zygote env failed")) {
+        if (t.startsWith("bootstrap: setting partitions ro")
+                || t.startsWith("bootstrap: WARNING - set partitions ro failed")) {
             setSeg2(0.57f, "Verification", 0xFFFFFFFF);
         }
-        if (t.startsWith("bootstrap: setting partitions ro")) {
+        if (t.startsWith("bootstrap: disabling ksu modules")) {
             setSeg2(0.71f, "Verification", 0xFFFFFFFF);
         }
-        if (t.startsWith("bootstrap: partitions set ro")
-                || t.startsWith("bootstrap: WARNING: set partitions ro failed")) {
-            setSeg2(0.79f, "Verification", 0xFFFFFFFF);
-        }
-        if (t.startsWith("bootstrap: WARNING: disable modules failed")) {
-            setSeg2(0.83f, "Verification", 0xFFFFFFFF);
-        }
         if (t.startsWith("bootstrap: starting SU daemon")) {
-            setSeg2(0.90f, "Verification", 0xFFFFFFFF);
+            setSeg2(0.85f, "Verification", 0xFFFFFFFF);
         }
-        if (t.matches("\\*+SUCCESS\\*+")) {
+        if (t.equals("ksud start: SUCCESS")) {
             setSeg1(1f);
             setSeg2(1f, "Verified", 0xFFFFFFFF);
         }
@@ -1281,8 +1279,8 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                 // 0 ok, 1 ksud/bootstrap error, 2 poll timeout or bad setup,
                 // 3 failed to patch files (see exp.c markers[]).
                 String why = lastFailReason != null ? lastFailReason
-                        : rc == 1 ? "ksud exited with error"
-                        : rc == 2 ? "check logs"
+                        : rc == 1 ? "ksud nonzero exit"
+                        : rc == 2 ? "check logcat & dmesg"
                         : "failed to patch files";
                 report("\n=== exploit failed: " + why + " ===\n");
             }
