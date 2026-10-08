@@ -38,3 +38,4 @@ app/src/main/jni/ko/*.ko
 
 # staged release APK for the GitHub release asset
 /release/
+__pycache__/
