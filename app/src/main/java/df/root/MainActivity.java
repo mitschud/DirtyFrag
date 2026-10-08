@@ -121,9 +121,10 @@ public class MainActivity extends AppCompatActivity implements IReporter {
     }
 
     /** Translates raw native log lines into two-step progress-bar states.
-     *  Seg 1 tracks the file patching, seg 2 the init phase: since upstream 3.2
-     *  the LKM hands off to "bootstrap", which reports progress by touching
-     *  /dev/dfm* nodes that exp.c polls for 70 seconds and prints. */
+     *  STRICTLY LINEAR: seg 1 (the exploit run) climbs to 100% and only then does seg 2
+     *  (verification) start climbing. The two bars never move at the same time.
+     *  Seg 1 tracks setup + file patching + the hook firing; seg 2 tracks the bootstrap,
+     *  which reports progress by touching /dev/dfm* nodes that exp.c polls for 70 seconds. */
     private void driveProgress(String t) {
         if (t.isEmpty()) return;
         if (t.startsWith("***FAILED***")) {
@@ -139,8 +140,10 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                 setSeg1(0.15f);
                 break;
             case "=== init  ===":
+                // The run bar is nearly done; the verification bar stays EMPTY until the
+                // module is actually in and the exploit bar has read 100%.
                 exploitPhase = "init";
-                setSeg2(0.05f, "Verification", 0xFFFFFFFF);
+                setSeg1(0.98f);
                 break;
             case "=== cleanup ===":
                 exploitPhase = "cleanup";
@@ -167,36 +170,36 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                 setSeg1(0.95f);
             }
         }
-        // Init phase: one step per bootstrap marker (see exp.c markers[]).
+        // Run bar finishes here - the module is loaded, nothing left to patch.
         if (t.startsWith("libc++: mutex acquired")) {
             setSeg1(1f);
-            setSeg2(0.12f, "Verification", 0xFFFFFFFF);
         }
+        // Verification bar: one step per bootstrap marker (see exp.c markers[]).
         if (t.startsWith("dfroot: launching bootstrap")) {
-            setSeg2(0.24f, "Verification", 0xFFFFFFFF);
+            setSeg2(0.14f, "Verification", 0xFFFFFFFF);
         }
         if (t.startsWith("bootstrap: prefs loaded")) {
-            setSeg2(0.36f, "Verification", 0xFFFFFFFF);
+            setSeg2(0.28f, "Verification", 0xFFFFFFFF);
         }
         if (t.startsWith("bootstrap: adopting zygote env")) {
-            setSeg2(0.48f, "Verification", 0xFFFFFFFF);
+            setSeg2(0.42f, "Verification", 0xFFFFFFFF);
         }
         if (t.startsWith("bootstrap: env adopted")
                 || t.startsWith("bootstrap: WARNING: adopt zygote env failed")) {
-            setSeg2(0.56f, "Verification", 0xFFFFFFFF);
+            setSeg2(0.57f, "Verification", 0xFFFFFFFF);
         }
         if (t.startsWith("bootstrap: setting partitions ro")) {
-            setSeg2(0.64f, "Verification", 0xFFFFFFFF);
+            setSeg2(0.71f, "Verification", 0xFFFFFFFF);
         }
         if (t.startsWith("bootstrap: partitions set ro")
                 || t.startsWith("bootstrap: WARNING: set partitions ro failed")) {
-            setSeg2(0.72f, "Verification", 0xFFFFFFFF);
+            setSeg2(0.79f, "Verification", 0xFFFFFFFF);
         }
         if (t.startsWith("bootstrap: WARNING: disable modules failed")) {
-            setSeg2(0.76f, "Verification", 0xFFFFFFFF);
+            setSeg2(0.83f, "Verification", 0xFFFFFFFF);
         }
         if (t.startsWith("bootstrap: starting SU daemon")) {
-            setSeg2(0.85f, "Verification", 0xFFFFFFFF);
+            setSeg2(0.90f, "Verification", 0xFFFFFFFF);
         }
         if (t.matches("\\*+SUCCESS\\*+")) {
             setSeg1(1f);
