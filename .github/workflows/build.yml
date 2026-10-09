@@ -8,6 +8,11 @@ on:
     branches: [master, main]
   workflow_dispatch:
 
+# The tag push creates the GitHub Release, which needs contents: write. Without this the
+# default token is read-only and softprops/action-gh-release fails with HTTP 403.
+permissions:
+  contents: write
+
 jobs:
   build-lkms:
     name: LKMs / ${{ matrix.kmi }}
