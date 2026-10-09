@@ -14,18 +14,17 @@ hardening) and keeps upstream's SU-manager agnostic design.
 
 1. Install the DirtyFrag APK from [Releases](https://github.com/mitschud/DirtyFrag/releases/latest).
 2. Install an SU manager that **ships `libksud.so`**:
-   - Samsung:
-     - [diabl0w's KernelSU](https://github.com/diabl0w/KernelSU/releases/latest) - bundles ksud,
-       carries the Samsung KDP patch and is the only manager that understands
-       `late-load --soft-reboot`
+   - Samsung - **required**:
+     - [diabl0w's KernelSU for Samsung, samsung-v1.0](https://github.com/diabl0w/KernelSU/releases/tag/samsung-v1.0) -
+       bundles `libksud.so` and carries the Samsung KDP/DEFEX kernel support. On a Samsung phone
+       this is the manager to use; stock KernelSU builds cannot take root there.
    - Other:
      - [KernelSU](https://github.com/tiann/KernelSU/releases/latest)
      - [KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next/releases/latest)
      - [KowSU](https://github.com/KOWX712/KernelSU/releases/latest)
      - [BakaSU](https://github.com/Baka-SU/BakaSU/releases/latest) (formerly ReSukiSU) - ships
-       `libksud.so`, so DirtyFrag will find and offer it. Two caveats: it carries no Samsung
-       KDP/DEFEX kernel support, so on Samsung the su grant itself fails; and its ksud has no
-       `late-load --soft-reboot`, so **Auto reboot must stay off** with it everywhere.
+       `libksud.so`, so DirtyFrag will find and offer it. It carries no Samsung KDP/DEFEX kernel
+       support, so on Samsung the su grant itself fails - use the diabl0w build above instead.
 3. Open DirtyFrag, pick your manager in the **SU Manager** card, then press **Run exploit**.
 
 > [!WARNING]
@@ -43,7 +42,8 @@ again after every reinstall.
 - Choose your SU manager inside the app
 - **Autorun** (start on boot), gated behind Expert mode, with a failed-run interlock that disables
   itself after a failed attempt so a bad run cannot boot-loop you
-- **Auto reboot** (soft reboot), only if your SU manager supports `late-load --soft-reboot`
+- **Auto reboot** (soft reboot) - since 1.11 (upstream 4.1) this works with every KernelSU
+  derivative: `dfroot.ko` is unloaded after late-load and ksud's own `soft-reboot` is run
 - **KernelSU Modules** on/off - works without root, applied by the kernel module before ksud starts
 - RO Partition Protection
 - Advanced log, with one tap to save it to Downloads
@@ -62,8 +62,8 @@ A: Sorry, there is no fix. Either:
 
 **Q: Log says "SUCCESS" or "ksud exited with error", but I don't have root**
 
-A: Turn off **Auto reboot** on the Autorun card if it is enabled - only diabl0w's manager understands
-`late-load --soft-reboot`. Otherwise see
+A: Turn off **Auto reboot** on the Autorun card if it is enabled - a soft reboot that the manager
+cannot complete leaves the loaded module unloaded again. Otherwise see
 [upstream discussion 69](https://github.com/diabl0w/DFRoot/discussions/69).
 
 **Q: I installed a module and now I can't launch root without crashing**

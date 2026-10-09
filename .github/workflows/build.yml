@@ -110,8 +110,17 @@ jobs:
             app/build/outputs/apk/release/dirtyfrag.apk
             app/build/outputs/apk/debug/dirtyfrag.apk
 
+      - name: Build release notes from CHANGELOG
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          # Take just the section for this tag: v1.11 -> the "## 1.11" block.
+          VER="${GITHUB_REF_NAME#v}"
+          awk -v ver="$VER" '/^## /{p = ($0 == "## " ver); next} p' CHANGELOG.md > RELEASE_NOTES.md
+          wc -l RELEASE_NOTES.md
+
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
           files: DirtyFrag-*.apk
+          body_path: RELEASE_NOTES.md
