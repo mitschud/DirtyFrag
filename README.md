@@ -22,9 +22,7 @@ hardening) and keeps upstream's SU-manager agnostic design.
      - [KernelSU](https://github.com/tiann/KernelSU/releases/latest)
      - [KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next/releases/latest)
      - [KowSU](https://github.com/KOWX712/KernelSU/releases/latest)
-     - [BakaSU](https://github.com/Baka-SU/BakaSU/releases/latest) (formerly ReSukiSU) - ships
-       `libksud.so`, so DirtyFrag will find and offer it. It carries no Samsung KDP/DEFEX kernel
-       support, so on Samsung the su grant itself fails - use the diabl0w build above instead.
+     - [BakaSU](https://github.com/Baka-SU/BakaSU/releases/latest) (formerly ReSukiSU)
 3. Open DirtyFrag, pick your manager in the **SU Manager** card, then press **Run exploit**.
 
 > [!WARNING]
