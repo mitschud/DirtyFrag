@@ -30,11 +30,15 @@ Based on upstream DFRoot 4.1 (upstream 3.0 - 4.1 merged into this fork).
   then does the verification bar start moving
 - Build moved to AGP 9.4.0 with compile/target SDK 37
 - BakaSU is listed as a manager for non-Samsung devices
+- zandatsu07's KernelSU-Next is listed as a manager for Samsung devices
 
 ### Samsung devices: which manager to install
 Samsung firmware enforces its own KDP/DEFEX credential handling, so a stock KernelSU build cannot
-take root there. Use diabl0w's Samsung build of KernelSU:
-**https://github.com/diabl0w/KernelSU/releases/tag/samsung-v1.0**
+take root there. Use one of the Samsung builds of KernelSU or KernelSU-Next instead:
+
+- [diabl0w's KernelSU](https://github.com/diabl0w/KernelSU/releases/tag/samsung-v1.0)
+- [zandatsu07's KernelSU-Next](https://github.com/zandatsu07/KernelSU-Next/releases/latest)
+
 Install it, pick it in DirtyFrag, and turn on Auto reboot if you want the soft reboot.
 
 ### Not in this release: the BakaSU manager
@@ -42,7 +46,7 @@ During this cycle the Samsung KDP/DEFEX handling was ported into BakaSU (ex-ReSu
 Samsung devices could use it as the manager. The port does not work yet: on the test device
 (SM-S931B) the device breaks right after the grant, and a control build with the port compiled out
 fails the same way, so the fault is not the port itself. It is not part of 1.11 and will be merged
-later once it is fixed. Until then Samsung devices must use the diabl0w KernelSU build linked
+later once it is fixed. Until then Samsung devices must use one of the Samsung builds linked
 above.
 
 ## 1.10

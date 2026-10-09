@@ -15,9 +15,8 @@ hardening) and keeps upstream's SU-manager agnostic design.
 1. Install the DirtyFrag APK from [Releases](https://github.com/mitschud/DirtyFrag/releases/latest).
 2. Install an SU manager that **ships `libksud.so`**:
    - Samsung - **required**:
-     - [diabl0w's KernelSU for Samsung, samsung-v1.0](https://github.com/diabl0w/KernelSU/releases/tag/samsung-v1.0) -
-       bundles `libksud.so` and carries the Samsung KDP/DEFEX kernel support. On a Samsung phone
-       this is the manager to use; stock KernelSU builds cannot take root there.
+     - [diabl0w's KernelSU](https://github.com/diabl0w/KernelSU/releases/tag/samsung-v1.0)
+     - [zandatsu07's KernelSU-Next](https://github.com/zandatsu07/KernelSU-Next/releases/latest)
    - Other:
      - [KernelSU](https://github.com/tiann/KernelSU/releases/latest)
      - [KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next/releases/latest)
