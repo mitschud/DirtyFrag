@@ -16,7 +16,7 @@ hardening) and keeps upstream's SU-manager agnostic design.
 2. Install an SU manager that **ships `libksud.so`**:
    - Samsung - **required**:
      - [diabl0w's KernelSU](https://github.com/diabl0w/KernelSU/releases/tag/samsung-v1.0)
-     - [zandatsu07's KernelSU-Next](https://github.com/zandatsu07/KernelSU-Next/releases/latest)
+     - [zandatsu07's KernelSU-Next](https://github.com/zandatsu07/KernelSU-Next/releases/latest) (Working only on S23 and below Kernel 5.15)
    - Other:
      - [KernelSU](https://github.com/tiann/KernelSU/releases/latest)
      - [KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next/releases/latest)
