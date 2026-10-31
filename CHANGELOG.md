@@ -9,6 +9,53 @@
   `rmmod oplus_*` chain behind issue #21, and it only writes the `dfm0`/`dfm1` markers our progress bar
   does not read.
 
+### UI - the app carries no androidx at all
+- `appcompat`, `material`, `constraintlayout` and the viewbinding plugin are out of the dependency
+  block, and with them the roughly forty androidx/material artifacts they pulled into the APK.
+  `gradle.properties` lost its `android.useAndroidX=true` line too, so nothing in the build mentions
+  the library any more: `:app:dependencies` resolves no androidx artifact and the dex carries no
+  `Landroidx/` string. AGP's built-in Kotlin support is off in the same file, because it was the only
+  thing still putting a runtime dependency - `kotlin-stdlib`, which no source file asks for - on the
+  classpath; the report now says "No dependencies" and the release APK is 271 kB.
+- `MainActivity` extends `android.app.Activity`, the app bar is a `FrameLayout` around
+  `android.widget.Toolbar`, and `Theme.DirtyFrag` parents `@android:style/Theme.Material.NoActionBar`
+  instead of a Material3 DayNight dynamic-colour theme. That parent was the one letting the wallpaper
+  palette into every attribute the theme left unset; the dark ramp it resolves to is now written out
+  line by line.
+- Four hand-written pieces replace what the libraries drew. `PillButton` is a `Button` that builds its
+  own `GradientDrawable` fill and hairline stroke inside a `RippleDrawable`, and reads the same
+  `app:strokeWidth` / `app:strokeColor` the layout writes on the Run pill. `DraggableCardView` extends
+  `FrameLayout` and reads `app:cardBackgroundColor` / `cardCornerRadius` / `strokeWidth` /
+  `strokeColor` from a `declare-styleable` of our own in `res/values/attrs.xml` - the names are the
+  Material ones on purpose, so the layout still says what it used to. `ActivityMainBinding` resolves
+  every id once at inflate, and only its import and the inflate line differ from what the plugin
+  generated.
+- `activity_main.xml` is a `RelativeLayout`. The Run pill's 26% inset and 48% width were the only
+  guideline geometry in the file, and `MainActivity` already computed both in pixels for the compact
+  animation (`PILL_INSET_FRACTION`, `pillPercent`); `applyRunPillGeometry()` is that arithmetic with
+  the parent's width handed to it, called once from `onCreate` before the first measure and then frame
+  by frame while the width animates.
+- Two anchoring bugs the translation surfaced, both fixed here: the log window was being placed twice,
+  because `CardStackLayout.setLogWindow()` already parks it with a top margin measured from the stack's
+  own bottom edge, while an XML rule anchoring the stack above the panel made the stack's height depend
+  on where the panel ended up; and the two bottom circles were anchored along the wrong side of the Run
+  pill, while their 12dp margins had always described them as flanking it.
+- Four resources nobody read went with the libraries. `res/menu/menu_main.xml` - the overflow is a
+  hand-drawn `PopupWindow` now, and nothing has inflated that menu since options menus left the app
+  in the V3.0 refactor, so its three ids were padding the resource table. `ic_play` and
+  `menu_item_bg` had outlived the layouts that used them, and the `ic_launcher_background` colour was
+  a duplicate the adaptive icon never pointed at: the icon only ever references the drawable of that
+  name, which is where that hex and its note now live. `lintDebug` reports no unused resources and
+  no errors.
+
+### Fix - opening a saved log crashed below Android 14
+- `readLastLog()` normalises the exploit-result header with `Matcher.appendReplacement` and
+  `appendTail`, and both calls were the `StringBuilder` overloads - those only exist from API 34 on,
+  while `minSdk` is 32, so on Android 12L and 13 the app threw `NoSuchMethodError` the moment it read
+  a log file. It is an `Error`, so the surrounding `catch (IOException)` never saw it. The
+  `StringBuffer` overloads have existed since the first API level and do the same job here. The call
+  has been in the tree since `b6b7d4d`, which is in 1.16, so this one is in a released build.
+
 ## 1.17
 
 Based on upstream DFRoot 4.6 - 4.7 (upstream 4.6 - 4.7 merged into this fork). `versionCode` 34, `versionName` 1.17.

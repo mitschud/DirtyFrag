@@ -1,13 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Package visibility (Android 11+): the SU-manager picker enumerates every
          installed app and keeps only the ones that actually ship libksud.so, so a
-         fixed <queries> allow-list is no longer enough. -->
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+         fixed <queries> allow-list is no longer enough. The app is sideloaded, so
+         the Play policy lint that flags this broad permission does not apply. -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
     <application
         android:label="DirtyFrag"
         android:allowBackup="false"

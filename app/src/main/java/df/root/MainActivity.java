@@ -1,5 +1,6 @@
 package df.root;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.ComponentName;
 import android.content.ContentValues;
@@ -23,11 +24,6 @@ import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.TextView;
-import androidx.core.content.res.ResourcesCompat;
-
-import androidx.appcompat.app.AppCompatActivity;
-
-import df.root.databinding.ActivityMainBinding;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -37,7 +33,7 @@ import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-public class MainActivity extends AppCompatActivity implements IReporter {
+public class MainActivity extends Activity implements IReporter {
 
     private static final String TAG = "dfroot";
 
@@ -60,6 +56,8 @@ public class MainActivity extends AppCompatActivity implements IReporter {
      *  morphKsuToPill). Matches the share circle's 54dp on the left. */
     private static final float KSU_CIRCLE_DP = 54f;
     private static final float KSU_GAP_DP = 12f;
+    /** The Run pill's left inset: what the 26% vertical guideline used to say. */
+    private static final float PILL_INSET_FRACTION = 0.26f;
     private android.animation.ValueAnimator ksuMorph;
     private android.animation.ValueAnimator updateMorph;
     private TextView titleView;
@@ -424,7 +422,11 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                     .compile("(===\\s*exploit\\s+(?:success|failed[^=]*)\\s*===)",
                             java.util.regex.Pattern.CASE_INSENSITIVE)
                     .matcher(log);
-            StringBuilder sb = new StringBuilder();
+            // The StringBuilder overloads of appendReplacement/appendTail only exist
+            // from API 34 on, and minSdk is 32, so this normaliser used to die with
+            // NoSuchMethodError on anything older than Android 14. StringBuffer has
+            // carried both overloads since the first API level.
+            StringBuffer sb = new StringBuffer();
             while (m.find()) m.appendReplacement(sb, java.util.regex.Matcher
                     .quoteReplacement(m.group().toLowerCase()));
             m.appendTail(sb);
@@ -451,6 +453,10 @@ public class MainActivity extends AppCompatActivity implements IReporter {
         mDeCtx = createDeviceProtectedStorageContext();
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        // The pill's 26%/48% box is arithmetic, not a RelativeLayout rule (see
+        // applyRunPillGeometry), so it has to be put in place before the first
+        // measure - otherwise the first frame shows it at wrap_content width.
+        applyRunPillGeometry(0f);
 
         // The header is the app's name and nothing else. The version number that
         // used to ride next to it is still recorded, just not in the one line of
@@ -461,7 +467,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
         Log.i(TAG, "version " + BuildConfig.VERSION_NAME);
         // NOTE: no setSupportActionBar() - it makes the ActionBar delegate draw
         // the title and ignore the toolbar's titleTextAppearance (breaks bold).
-        // The toolbar renders its own title via app:titleTextAppearance.
+        // The framework Toolbar renders its own title via android:titleTextAppearance.
 
         // Update check (SamSU-style): when GitHub has a newer release, the headline
         // is covered by a lime pill reading "Update" and tapping that pill opens the
@@ -514,7 +520,14 @@ public class MainActivity extends AppCompatActivity implements IReporter {
         // and on the two pill labels, whose textStyle="bold" alone renders lighter
         // than the title's explicit wght 700 next to them.
         binding.toolbar.post(() -> {
-            Typeface base = ResourcesCompat.getFont(this, R.font.inter_vf);
+            Typeface base = null;
+            try {
+                // ResourcesCompat went away with the rest of androidx; Resources.getFont
+                // is the framework call and does the same job for a res/font entry.
+                base = getResources().getFont(R.font.inter_vf);
+            } catch (RuntimeException notAFont) {
+                // leave base null and fall through to the check below
+            }
             if (base == null) return;
             Typeface bold = Typeface.create(base, 700, false);
             binding.odinLabel.setTypeface(bold);
@@ -608,8 +621,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
             // Same dark greyed-out styling as the Rooted state.
             binding.btnRun.setTextColor(0xFF6E6E6E);
             binding.btnRun.setBackgroundTintList(ColorStateList.valueOf(0xFF1F1F1F));
-            ((com.google.android.material.button.MaterialButton) binding.btnRun)
-                    .setStrokeColor(ColorStateList.valueOf(0xFF1F1F1F));
+            binding.btnRun.setStrokeColor(ColorStateList.valueOf(0xFF1F1F1F));
             binding.outputView.setText("");
             logBuffer.setLength(0);
             if (lastLogFile.exists()) lastLogFile.delete();
@@ -943,9 +955,8 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                 hideCard(card);
             });
             int size = (int) (HIDE_BTN_DP * md);
-            androidx.constraintlayout.widget.ConstraintLayout.LayoutParams lp =
-                    new androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(
-                            size, size);
+            android.widget.RelativeLayout.LayoutParams lp =
+                    new android.widget.RelativeLayout.LayoutParams(size, size);
             binding.getRoot().addView(b, lp);
             hideButtons[i] = b;
         }
@@ -975,12 +986,10 @@ public class MainActivity extends AppCompatActivity implements IReporter {
         // card accepts the layout (VIS2.2). It has to be a real view: the log
         // scroll and the pills consume their own touches, so a listener on the
         // root layout would never hear the tap.
-        androidx.constraintlayout.widget.ConstraintLayout.LayoutParams alp =
-                new androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(0, 0);
-        alp.leftToLeft = alp.rightToRight =
-                androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID;
-        alp.topToTop = alp.bottomToBottom =
-                androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID;
+        android.widget.RelativeLayout.LayoutParams alp =
+                new android.widget.RelativeLayout.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT);
         acceptOverlay = new View(this);
         acceptOverlay.setClickable(true);
         acceptOverlay.setElevation(5 * md);
@@ -1356,8 +1365,8 @@ public class MainActivity extends AppCompatActivity implements IReporter {
         binding.btnRun.setText("Run exploit");
         binding.btnRun.setTextColor(ok ? 0xFFE0E0E0 : 0xFF6E6E6E);
         binding.btnRun.setBackgroundTintList(ColorStateList.valueOf(ok ? 0xFF7A7A7A : 0xFF1F1F1F));
-        ((com.google.android.material.button.MaterialButton) binding.btnRun)
-                .setStrokeColor(ColorStateList.valueOf(ok ? 0xFFA6A6A6 : 0xFF1F1F1F));
+        binding.btnRun.setStrokeColor(
+                ColorStateList.valueOf(ok ? 0xFFA6A6A6 : 0xFF1F1F1F));
     }
 
     /**
@@ -1422,8 +1431,8 @@ public class MainActivity extends AppCompatActivity implements IReporter {
     /** The update pill's animated width. layout_gravity="start" welds its left edge
      *  to the headline's, so only the right edge travels. */
     private void setUpdatePillWidth(int px) {
-        androidx.appcompat.widget.Toolbar.LayoutParams lp =
-                (androidx.appcompat.widget.Toolbar.LayoutParams)
+        android.widget.Toolbar.LayoutParams lp =
+                (android.widget.Toolbar.LayoutParams)
                         binding.updatePill.getLayoutParams();
         lp.width = px;
         binding.updatePill.setLayoutParams(lp);
@@ -1638,8 +1647,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
         binding.btnRun.setText("Run exploit");
         binding.btnRun.setTextColor(0xFF6E6E6E);
         binding.btnRun.setBackgroundTintList(ColorStateList.valueOf(0xFF1F1F1F));
-        ((com.google.android.material.button.MaterialButton) binding.btnRun)
-                .setStrokeColor(ColorStateList.valueOf(0xFF1F1F1F));
+        binding.btnRun.setStrokeColor(ColorStateList.valueOf(0xFF1F1F1F));
         setCompactButton(false, false);
     }
 
@@ -1655,8 +1663,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
         binding.btnRun.setText(rooted ? "Rooted" : "Run exploit");
         binding.btnRun.setTextColor(fg);
         binding.btnRun.setBackgroundTintList(ColorStateList.valueOf(bg));
-        ((com.google.android.material.button.MaterialButton) binding.btnRun)
-                .setStrokeColor(ColorStateList.valueOf(stroke));
+        binding.btnRun.setStrokeColor(ColorStateList.valueOf(stroke));
         // Rooted/running: shrink the pill left and pop the KSU circle next to
         // it (lit when rooted); fresh run state: full-width pill, no circle.
         setCompactButton(rooted, rooted);
@@ -1666,11 +1673,12 @@ public class MainActivity extends AppCompatActivity implements IReporter {
      *  next to it (compact=true, ksuLit=lit after successful root), or
      *  restores the full-width pill. */
     private void setCompactButton(boolean compact, boolean ksuLit) {
-        // Fresh pill: 48% wide starting at the 26% guideline → right edge at
-        // 74%. Compact: pill + 12dp gap + 54dp circle must occupy the same
+        // Fresh pill: 48% wide starting 26% in from the parent's left edge → right
+        // edge at 74%. Compact: pill + 12dp gap + 54dp circle must occupy the same
         // 48% total (left edge pinned), so pill = 48% - extras.
-        float parentW = ((View) binding.btnRun.getParent()).getWidth();
-        if (parentW <= 0) parentW = getResources().getDisplayMetrics().widthPixels;
+        float measured = ((View) binding.btnRun.getParent()).getWidth();
+        if (measured <= 0) measured = getResources().getDisplayMetrics().widthPixels;
+        final float parentW = measured;
         float density = getResources().getDisplayMetrics().density;
         float target = 0.48f;
         if (compact) {
@@ -1682,11 +1690,7 @@ public class MainActivity extends AppCompatActivity implements IReporter {
         a.setDuration(250);
         a.addUpdateListener(anim -> {
             pillPercent = (float) anim.getAnimatedValue();
-            androidx.constraintlayout.widget.ConstraintLayout.LayoutParams lp =
-                    (androidx.constraintlayout.widget.ConstraintLayout.LayoutParams)
-                            binding.btnRun.getLayoutParams();
-            lp.matchConstraintPercentWidth = pillPercent;
-            binding.btnRun.setLayoutParams(lp);
+            applyRunPillGeometry(parentW);
         });
         a.start();
         // The launcher pill ends up exactly as wide as the shrunken Run pill
@@ -1781,11 +1785,34 @@ public class MainActivity extends AppCompatActivity implements IReporter {
                 .setStartDelay(lit ? 120 : 0).setDuration(220).start();
     }
 
-    /** The launcher's animated width. layout_constraintHorizontal_bias="0"
-     *  welds its left edge to the Run pill while the right edge travels. */
+    /**
+     * The Run pill's box in pixels: {@code pillPercent} of the parent's width, inset
+     * from its left edge by {@code PILL_INSET_FRACTION} of that width. ConstraintLayout
+     * used to say this with matchConstraintPercentWidth plus a vertical guideline;
+     * RelativeLayout has neither, and a percentage of the parent is not something it
+     * can declare at all - so the pill stays wrap_content in the XML and this method
+     * does the arithmetic once somebody knows how wide the parent is. setCompactButton
+     * drives it frame by frame while the width animates; onCreate drives it once for
+     * the first pass, before anything has been measured.
+     */
+    private void applyRunPillGeometry(float parentW) {
+        if (parentW <= 0) parentW = ((View) binding.btnRun.getParent()).getWidth();
+        if (parentW <= 0) parentW = getResources().getDisplayMetrics().widthPixels;
+        android.widget.RelativeLayout.LayoutParams lp =
+                (android.widget.RelativeLayout.LayoutParams)
+                        binding.btnRun.getLayoutParams();
+        lp.leftMargin = (int) (PILL_INSET_FRACTION * parentW);
+        lp.width = (int) (pillPercent * parentW);
+        binding.btnRun.setLayoutParams(lp);
+    }
+
+    /** The launcher's animated width. layout_toEndOf="@id/btnRun" welds its left
+     *  edge to the Run pill's right edge (plus the 12dp gap) while the right edge
+     *  travels - the plain-RelativeLayout reading of the old
+     *  layout_constraintHorizontal_bias="0". */
     private void setKsuWidth(int px) {
-        androidx.constraintlayout.widget.ConstraintLayout.LayoutParams lp =
-                (androidx.constraintlayout.widget.ConstraintLayout.LayoutParams)
+        android.widget.RelativeLayout.LayoutParams lp =
+                (android.widget.RelativeLayout.LayoutParams)
                         binding.btnKsu.getLayoutParams();
         lp.width = px;
         binding.btnKsu.setLayoutParams(lp);

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Our own stand-ins for the Material attributes the layout used to use, so
+     activity_main.xml keeps saying the same thing in app: without a
+     com.google.android.material dependency. The names match the Material ones on
+     purpose; only the implementation is ours (df.root.DraggableCardView,
+     df.root.PillButton). -->
+<resources>
+
+    <declare-styleable name="DraggableCardView">
+        <attr name="cardBackgroundColor" format="color" />
+        <attr name="cardCornerRadius" format="dimension" />
+        <attr name="strokeWidth" format="dimension" />
+        <attr name="strokeColor" format="color" />
+    </declare-styleable>
+
+    <declare-styleable name="PillButton">
+        <attr name="cornerRadius" format="dimension" />
+        <!-- strokeWidth / strokeColor are declared on DraggableCardView above; attrs are
+             global in Android, so repeating the names here (no format) lets PillButton
+             read the app:strokeWidth / app:strokeColor the layout already writes on
+             btnRun instead of ignoring them in favour of its defaults. -->
+        <attr name="strokeWidth" />
+        <attr name="strokeColor" />
+    </declare-styleable>
+
+</resources>

@@ -2,9 +2,10 @@ package df.root;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.content.res.TypedArray;
+import android.graphics.drawable.GradientDrawable;
 import android.util.AttributeSet;
-
-import com.google.android.material.card.MaterialCardView;
+import android.widget.FrameLayout;
 
 /**
  * OneUI card that lives inside a CardStackLayout. It owns nothing but looks:
@@ -18,11 +19,19 @@ import com.google.android.material.card.MaterialCardView;
  * with the selection. It is deliberately not faded in or charged up first: a
  * highlight that starts animating the moment the finger lands looks like a
  * glitch and says nothing about which card is about to move.
+ *
+ * This used to be a MaterialCardView. The card is three attributes - a fill, a
+ * corner radius and a hairline stroke - so it is now a FrameLayout whose
+ * background is one GradientDrawable: the same shape gives the fill, the stroke
+ * and, through the default background outline provider, the shadow the lifted
+ * card casts on translationZ. activity_main.xml keeps saying cardBackgroundColor,
+ * cardCornerRadius and strokeWidth; only the implementation moved (attrs.xml).
  */
-public class DraggableCardView extends MaterialCardView {
+public class DraggableCardView extends FrameLayout {
 
     private static final int REST_BG = 0xFF1C1C1C, HELD_BG = 0xFF3A3A3C;
     private static final int HELD_STROKE = 0xFFFFFFFF;
+    private static final float REST_RADIUS_DP = 26f;
     private static final float STROKE_W_DP = 1.2f;
     /** How far the lifted card floats above the stack. */
     private static final float LIFT_Z_DP = 18f;
@@ -32,9 +41,13 @@ public class DraggableCardView extends MaterialCardView {
     private static final float PUSHED_SCALE = 0.94f;
     private static final long VISUAL_MS = 150;
 
+    private final GradientDrawable shape;
     private final float density;
     private final int maxStroke;
     private final float liftZ;
+
+    private int strokeColor = HELD_STROKE;
+    private int strokeWidth;
 
     private boolean held, dimmed, pushed;
     private boolean hideable = true;
@@ -52,18 +65,39 @@ public class DraggableCardView extends MaterialCardView {
         density = context.getResources().getDisplayMetrics().density;
         maxStroke = (int) (STROKE_W_DP * density);
         liftZ = LIFT_Z_DP * density;
+
+        float radius = REST_RADIUS_DP * density;
+        int    bg   = REST_BG;
+        int    sw   = 0;
+        int    sc   = HELD_STROKE;
+        if (attrs != null) {
+            TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.DraggableCardView);
+            bg       = a.getColor(R.styleable.DraggableCardView_cardBackgroundColor, bg);
+            radius   = a.getDimension(R.styleable.DraggableCardView_cardCornerRadius, radius);
+            sw       = a.getDimensionPixelSize(R.styleable.DraggableCardView_strokeWidth, sw);
+            sc       = a.getColor(R.styleable.DraggableCardView_strokeColor, sc);
+            a.recycle();
+        }
+
+        shape = new GradientDrawable();
+        shape.setShape(GradientDrawable.RECTANGLE);
+        shape.setCornerRadius(radius);
+        shape.setColor(bg);
         // The outline is always white; the rest state keeps a width of zero, so
         // the card stays the flat card the app has always had.
-        setStrokeColor(ColorStateList.valueOf(HELD_STROKE));
-        setCardBackgroundColor(REST_BG);
+        strokeColor = sc;
+        strokeWidth = sw;
+        shape.setStroke(strokeWidth, strokeColor);
+        super.setBackground(shape);
     }
 
     /** Held = lifted card: shaded white fill + thin white outline (VIS1.3). */
     public void setHeld(boolean held) {
         if (this.held == held) return;
         this.held = held;
-        setCardBackgroundColor(held ? HELD_BG : REST_BG);
-        setStrokeWidth(held ? maxStroke : 0);
+        shape.setColor(held ? HELD_BG : REST_BG);
+        strokeWidth = held ? maxStroke : 0;
+        shape.setStroke(strokeWidth, strokeColor);
         setTranslationZ(held ? liftZ : 0f);
         invalidate();
     }
@@ -94,5 +128,24 @@ public class DraggableCardView extends MaterialCardView {
 
     public void setHideable(boolean hideable) {
         this.hideable = hideable;
+    }
+
+    /** Kept for parity with MaterialCardView in case a card ever wants its own colour. */
+    public void setCardBackgroundColor(int color) {
+        shape.setColor(color);
+        invalidate();
+    }
+
+    public void setStrokeColor(ColorStateList colors) {
+        if (colors == null) return;
+        strokeColor = colors.getColorForState(getDrawableState(), strokeColor);
+        shape.setStroke(strokeWidth, strokeColor);
+        invalidate();
+    }
+
+    public void setStrokeWidth(int px) {
+        strokeWidth = px;
+        shape.setStroke(strokeWidth, strokeColor);
+        invalidate();
     }
 }
