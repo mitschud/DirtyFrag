@@ -149,6 +149,18 @@ Based on upstream DFRoot 4.6 - 4.7 (upstream 4.6 - 4.7 merged into this fork). `
   the packaged `.so` for each file byte for byte, which is what was done here: an `:app:assembleRelease`
   over the refreshed sources gave an APK whose `libdfroot.so` contains all eight at offsets `0x1480`
   through `0x16560`, 97,280 of its 124,136 bytes.
+- Rooted for real with them, on the phone this KMI belongs to. A 1.17 build assembled over the refreshed
+  tree ran on the SM-S931B (Android 17, patch level 2026-10-05, kernel
+  `6.6.127-android15-8-p87b1ce1-abogkiS931BXXSDDZJ1-4k`) and its run log says `Using KMI: android15-6.6`
+  followed by `patch: /vendor/lib64/libbinderdebug.so <- dfroot.ko (10560 bytes)` - 10560 is the rebuilt
+  module, the 1.16 copy is 10328. `/dev/df` came up, `su` runs in `u:r:ksu:s0` with SELinux still
+  `Enforcing`, and the KernelSU manager reports working.
+- Which is also how to tell one module generation from another in the field, and worth knowing when
+  triaging a report: the module is never `insmod`-ed. It goes in as raw bytes at the `ko_target`
+  (`/vendor/lib64/libbinderdebug.so` on this phone) and the hook in `libc++.so` loads it from there, so a
+  rooted phone has no `dfroot` line in `/proc/modules` and no `/sys/module/dfroot` to read a build-id
+  from. The byte count on that `patch:` line is the marker, and it is what identifies which committed
+  `.ko` a build actually shipped.
 - Refresh recipe, kept here so the next one is not a scavenger hunt:
   `gh run download <run> --repo mitschud/DirtyFrag --pattern 'df-lkm-*'` then
   `cp /tmp/lkms/df-lkm-*/dfroot-*.ko app/src/main/jni/ko/`. `*.ko` is marked `binary` in `.gitattributes`,
