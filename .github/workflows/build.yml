@@ -37,13 +37,13 @@ jobs:
       - name: Build dfroot.ko
         run: |
           cd lkm
+          # lkm/Makefile owns the section diet - do not repeat it here. An extra
+          # llvm-objcopy pass used to run on top of it and stripped
+          # .note.gnu.build-id, which upstream deliberately keeps: without that
+          # section the module fails to load on the Galaxy A34 (SM-A346M,
+          # 6.6.92). Keeping one diet definition also makes CI output byte-for-byte
+          # what the root Makefile produces in the same DDK image.
           make -j$(nproc)
-          llvm-objcopy --strip-unneeded \
-            -R .comment -R .note.gnu.build-id -R .note.gnu.property \
-            -R .note.Linux -R .note.GNU-stack \
-            -R .BTF -R .BTF.base -R .llvm_addrsig \
-            -R .hyp.text -R .hyp.bss -R .hyp.rodata -R .hyp.event_ids \
-            -R .hyp.patchable_function_entries -R .hyp.data dfroot.ko
           mkdir -p $GITHUB_WORKSPACE/out
           cp dfroot.ko $GITHUB_WORKSPACE/out/dfroot-${{ matrix.kmi }}.ko
           make clean

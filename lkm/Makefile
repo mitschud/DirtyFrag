@@ -1,5 +1,11 @@
 obj-m += dfroot.o
 
+# Upstream's diet step below is written as $(OBJCOPY), which the DDK container
+# exports. Default it here so the recipe can never expand to an empty command
+# (that would silently do nothing, or fail with 127) outside that image; a value
+# from the environment still wins.
+OBJCOPY ?= llvm-objcopy
+
 CFLAGS_dfroot.o := -Os -Qn -fno-addrsig -fno-asynchronous-unwind-tables \
                    -fno-unwind-tables
 
