@@ -132,12 +132,32 @@ Based on upstream DFRoot 4.6 - 4.7 (upstream 4.6 - 4.7 merged into this fork). `
   with no definition in the tree and relies on the DDK image exporting it; a missing value would make
   the recipe expand to nothing and silently skip the diet.
 
-### Before the tag is cut
-- The eight tracked `app/src/main/jni/ko/dfroot-<KMI>.ko` are still the ones built from the 1.16 tree.
-  Rebuilding them needs the `ghcr.io/ylarod/ddk-min` containers, which this machine cannot run (no
-  container runtime). CI rebuilds all eight from source on every push and downloads them into
-  `app/src/main/jni/ko/` before assembling the APK, so published builds are current; refresh the
-  tracked copies from the `build-lkms` artifacts before tagging, the way `d9c8861` did for 1.16.
+### LKM - the eight tracked modules rebuilt from this tree
+- `app/src/main/jni/ko/dfroot-<KMI>.ko` are no longer the 1.16-era binaries - they were the last of them
+  in the tree. The replacements come from the `build-lkms` artifacts of the merge run, which builds them
+  from exactly the source now on master, and went into `app/src/main/jni/ko/` the way `d9c8861` did for
+  1.16. Building them here is not an option: the `ghcr.io/ylarod/ddk-min:<KMI>` images need a container
+  runtime this machine does not have, so CI is the build host and its artifacts are the faithful copies.
+- What changed in the bytes, checked per module. Every one of the eight gained `.note.gnu.build-id`; the
+  tracked copies had no such section at all, because they predate `fa7380b` dropping the workflow's second
+  `llvm-objcopy` pass. Missing build-id is what stopped 1.15 and 1.16 modules loading on the Galaxy A34,
+  so 1.17 is the first release whose committed modules are the ones that phone needs. The `avc_has_perm`
+  and `avc_has_perm_noaudit` names from the SELinux fallback above are inside them as well - the old
+  `android15-6.6` copy names neither. `vermagic` is unchanged per KMI: same DDK images, same toolchain.
+- The modules reach a phone embedded in `lib/arm64-v8a/libdfroot.so`, through the `.incbin` block in
+  `exp.c` - there is no `ko/` entry in the APK to inspect. Proving a build carries them means searching
+  the packaged `.so` for each file byte for byte, which is what was done here: an `:app:assembleRelease`
+  over the refreshed sources gave an APK whose `libdfroot.so` contains all eight at offsets `0x1480`
+  through `0x16560`, 97,280 of its 124,136 bytes.
+- Refresh recipe, kept here so the next one is not a scavenger hunt:
+  `gh run download <run> --repo mitschud/DirtyFrag --pattern 'df-lkm-*'` then
+  `cp /tmp/lkms/df-lkm-*/dfroot-*.ko app/src/main/jni/ko/`. `*.ko` is marked `binary` in `.gitattributes`,
+  so the copies survive the `text=auto eol=lf` filter.
+
+### Still outstanding before the tag is cut
+- The D2 / Odin download-mode flag writer, designed in `docs/d2-download-mode-writer.md` with
+  `tools/d2-probe.sh` already committed. `versionCode` stays 34 and `versionName` stays 1.17 until that
+  lands and passes a device run; then it gets a tag.
 
 ## 1.16
 
