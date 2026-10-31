@@ -1,0 +1,36 @@
+# Line endings. This project's history was written on Windows; on a Linux checkout
+# every Windows-edited file comes back as a whole-file CRLF diff (70 files, 8426
+# insertions / 8426 deletions of pure noise in the 1.20 glass tree). Store LF in the
+# index, check out LF everywhere.
+* text=auto eol=lf
+
+# Shell and native sources must stay LF on every platform - a CRLF gradlew will not
+# run and CRLF in .S / .inc breaks the assembler.
+gradlew    text eol=lf
+Makefile   text eol=lf
+*.sh       text eol=lf
+*.c        text eol=lf
+*.h        text eol=lf
+*.inc      text eol=lf
+*.S        text eol=lf
+*.java     text eol=lf
+
+# Windows batch keeps CRLF - it is the only file type that needs it.
+*.bat      text eol=crlf
+*.cmd      text eol=crlf
+
+# Binaries. The eight prebuilt dfroot-*.ko are committed on purpose (see README),
+# so they must never be run through the line-ending filter.
+*.ko       binary
+*.so       binary
+*.jar      binary
+*.jks      binary
+*.apk      binary
+*.aar      binary
+*.png      binary
+*.gif      binary
+*.jpg      binary
+*.ttf      binary
+*.otf      binary
+*.zip      binary
+*.gz       binary
