@@ -198,7 +198,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:background="@drawable/menu_row_highlight"
+            android:background="@drawable/card_row_ripple"
             android:clickable="true"
             android:focusable="true"
             android:paddingStart="16dp"
@@ -605,14 +605,25 @@
          (#1F1F1F, like the Rooted pill / unlit KSU circle) with the glyph in
          #6E6E6E — the exact colour of the "Rooted" text. padding 0 + center
          scaleType keep the glyph dead-centre. Hidden until a run has finished;
-         MainActivity.setShareButtonVisible pops it in like btnKsu. -->
+         MainActivity.setShareButtonVisible pops it in like btnKsu.
+
+         It is pinned to the parent's start rather than to the Run pill: the
+         pill's left edge is not a layout rule at all, it is a leftMargin that
+         applyRunPillGeometry() puts in at runtime, and RelativeLayout resolves
+         a layout_toStartOf anchor against the pill's own rule (alignParentStart,
+         i.e. x=0) instead of against that margin. Measured on device: the circle
+         came out at x = -186..-34 - visible, enabled, clickable, entirely off
+         the left edge of the screen, which is why the share button looked like
+         it had vanished. layout_marginStart is the fall-back for the frame
+         before applyRunPillGeometry() has run (26% inset - 12dp gap - 54dp
+         circle = 33.4dp); the code sets the exact px every time the pill moves. -->
     <ImageButton
         android:id="@+id/btnShareLog"
         android:layout_width="54dp"
         android:layout_height="54dp"
-        android:layout_toStartOf="@id/btnRun"
+        android:layout_alignParentStart="true"
         android:layout_alignBottom="@id/btnRun"
-        android:layout_marginEnd="12dp"
+        android:layout_marginStart="33dp"
         android:background="@drawable/bg_circle_grey_ripple"
         android:contentDescription="Save log to Downloads"
         android:elevation="12dp"

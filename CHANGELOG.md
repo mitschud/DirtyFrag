@@ -48,6 +48,35 @@
   name, which is where that hex and its note now live. `lintDebug` reports no unused resources and
   no errors.
 
+### UI - the pill paints its own fill, and the share circle comes back on screen
+- `PillButton` extends `TextView`, not `Button`. A framework `Button` arrives with the platform's
+  button style, and OneUI's style installs a background of its own behind the one this class builds,
+  so the pill was being painted twice. A text view has no default style, so the only background it
+  owns is the `GradientDrawable` built here; the centring, the click and the focus that `Button` gave
+  for free are now set explicitly, and `getAccessibilityClassName()` answers `Button` so TalkBack
+  still reads a button.
+- Fill and press highlight are no longer nested inside one another. A shape installed inside another
+  drawable is copied on the way in, so every later `setColor` landed on a copy nothing drew: the Run
+  pill sat at the layout's `#7A7A7A` while the code believed it had painted it `#1F1F1F`. The
+  `backgroundTint` the XML put on the view is dropped for the same reason - a `SRC_IN` tint over a
+  shape that already carries a colour replaces that colour outright, which is what flashed the pill
+  bright green mid-animation. The shape is the background, the ripple a content-less `RippleDrawable`
+  in the foreground clipped by its own rounded-rect stencil, and every fill or stroke change now
+  ends in an explicit `invalidate()`.
+- The SU-manager row inside the draggable card takes a new `card_row_ripple` in place of
+  `menu_row_highlight`. The old drawable carries an opaque `#1C1C1C` rounded rect, which is right for
+  a popup row that has to bring its own surface, but laid over the card it squared off the card's
+  26dp corners and hid the lighter fill and white outline that say the card is being held. Here the
+  white shape is only the ripple mask, so nothing paints at rest and the ripple still stops at the
+  card's own radius.
+- The share button was never hidden, it was laid out off the left edge of the screen:
+  `layout_toStartOf="@id/btnRun"` resolves against the pill's own rule (`alignParentStart`, x = 0)
+  and ignores the `leftMargin` that `applyRunPillGeometry()` writes at runtime. `dumpsys activity top`
+  put the circle at x = -186..-34 - `VISIBLE`, enabled, clickable, entirely past the edge. It is
+  pinned to `alignParentStart` with a 33dp fall-back margin, and the same method mirrors the pill on
+  every geometry change - inset, minus `round(12dp)`, minus the circle's width - which puts both gaps
+  on the same 34 px. Measured on device: circle 94-246, Rooted pill 280-612, Manager pill 646-978.
+
 ### Fix - opening a saved log crashed below Android 14
 - `readLastLog()` normalises the exploit-result header with `Matcher.appendReplacement` and
   `appendTail`, and both calls were the `StringBuilder` overloads - those only exist from API 34 on,

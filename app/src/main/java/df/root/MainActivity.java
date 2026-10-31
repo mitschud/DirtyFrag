@@ -1804,6 +1804,23 @@ public class MainActivity extends Activity implements IReporter {
         lp.leftMargin = (int) (PILL_INSET_FRACTION * parentW);
         lp.width = (int) (pillPercent * parentW);
         binding.btnRun.setLayoutParams(lp);
+        // The share circle mirrors the pill's left edge, so it takes the same
+        // arithmetic: its XML pins it to the parent's start and this puts the
+        // inset in, exactly like the pill's. It cannot hang off the pill with
+        // layout_toStartOf - the anchor is resolved against the pill's rule
+        // (parent start), not against the leftMargin set two lines above, and
+        // on device that left the circle at x = -186: drawn, clickable, gone.
+        android.widget.RelativeLayout.LayoutParams shareLp =
+                (android.widget.RelativeLayout.LayoutParams)
+                        binding.btnShareLog.getLayoutParams();
+        if (shareLp.width > 0) {
+            float gap = KSU_GAP_DP * getResources().getDisplayMetrics().density;
+            // Math.round, not a truncate: btnKsu's 12dp layout_marginStart rounds
+            // to 34 px, and a truncated 33 here left the row visibly lopsided.
+            shareLp.leftMargin = Math.max(0,
+                    lp.leftMargin - Math.round(gap) - shareLp.width);
+            binding.btnShareLog.setLayoutParams(shareLp);
+        }
     }
 
     /** The launcher's animated width. layout_toEndOf="@id/btnRun" welds its left
