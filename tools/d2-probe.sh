@@ -13,11 +13,14 @@ ADB=(adb)
 [ -n "$SERIAL" ] && ADB=(adb -s "$SERIAL")
 
 DEV=/data/local/tmp/d2-probe.sh
+# Host-side scratch: the heredoc below lands here first, then gets pushed to $DEV.
+TMP=$(mktemp "${TMPDIR:-/tmp}/d2-probe.XXXXXX") || exit 1
+trap 'rm -f "$TMP"' EXIT
 MODEL=$("${ADB[@]}" shell getprop ro.product.model 2>/dev/null | tr -d '\r')
 [ -z "$MODEL" ] && { echo "no device through adb (is USB debugging on?)" >&2; exit 1; }
 LOG="d2-probe-${MODEL// /_}-$(date +%Y%m%d-%H%M).log"
 
-cat > "$DEV.tmp" <<'PROBE'
+cat > "$TMP" <<'PROBE'
 #!/system/bin/sh
 # Runs as root on the device. Read-only. toybox sh, so keep it plain.
 sec() { printf '\n========== %s ==========\n' "$1"; }
@@ -96,8 +99,7 @@ dmesg 2>/dev/null | grep -iE 'defex|vaultkeeper|dmc' | tail -20
 sec "done"
 PROBE
 
-"${ADB[@]}" push "$DEV.tmp" "$DEV" >/dev/null || { rm -f "$DEV.tmp"; exit 1; }
-rm -f "$DEV.tmp"
+"${ADB[@]}" push "$TMP" "$DEV" >/dev/null || exit 1
 echo "probing $MODEL ..."
 "${ADB[@]}" shell "su -c 'sh $DEV'" 2>&1 | tee "$LOG"
 "${ADB[@]}" shell "rm -f $DEV" >/dev/null

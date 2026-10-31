@@ -56,6 +56,16 @@ public class OneUiSwitch extends View {
         invalidate();
     }
 
+    /**
+     * A state being displayed rather than one changed under a finger: the thumb is already at
+     * its end when the view appears, so sliding it there is a lie about what just happened.
+     */
+    public void setCheckedQuiet(boolean checked) {
+        this.checked = checked;
+        this.progress = checked ? 1f : 0f;
+        invalidate();
+    }
+
     public boolean isChecked() { return checked; }
 
     @Override

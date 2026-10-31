@@ -26,7 +26,9 @@ import java.util.Locale;
  * and DirtyFrag is deliberately not a root client - it is the tool that gets you
  * root, so it has to work on a device that has none. Reading the vault is what
  * the first attempt at this feature did, which is why it could only ever answer
- * "unsupported" on a real Galaxy.
+ * "unsupported" on a real Galaxy. What this describes is therefore the rootless
+ * half of the recovery pill: when a su grant is in play, D2Writer asks the
+ * vendor's own vaultkeeper service for the real three bytes and those win.
  *
  * So instead of reading the vault this reads the two inputs the vault is built
  * from, both of them public API: the lock-screen credential through
@@ -35,29 +37,19 @@ import java.util.Locale;
  * answer is computed from the same facts rather than copied out of a vault we
  * cannot open.
  *
- * The one input that cannot be read is at_command. It is assumed to be 0, which
- * is what it is after every boot unless a service tool has just authorised the
- * device, and it fails in the safe direction: a wrong guess can only make the dot
- * red when Odin would in fact have worked, never green when it would not.
+ * The one input that cannot be read here is at_command, and this class no longer guesses at it.
+ * Byte 2 is what decides the answer and it moves on its own - it was watched moving: 1 eighteen
+ * minutes into the boot that followed a write, 0 in the boot after that. A fixed value assumed
+ * here would be wrong about as often as right, so what this class reports is only what it
+ * measures: the two inputs the vault is built from, and whether this firmware gates download
+ * mode at all. The verdict belongs to the vault, and D2Writer is what reads the vault.
  *
- * The dot is a verdict, and a verdict you cannot argue with is just a coloured
- * dot, so the pill also hands back the three facts behind it - lock screen,
- * maintenance mode, and whether this firmware gates download mode at all. The
- * toolbar submenu shows them as three lines, which means a dot the owner
- * disagrees with can be read straight off the screen instead of having to be
- * dug out of logcat.
+ * The rows this feeds are the facts behind a verdict, kept on screen rather than buried in
+ * logcat, so a dot the owner disagrees with can be argued with from what is visible. The dot is
+ * painted from the vault when a su can read it and left grey when it cannot - never from the
+ * reading below, which is how a device whose vault said not-authorized once came to be green.
  */
 final class D2Status {
-
-    /** What the toolbar dot is painted. */
-    enum Dot {
-        /** Nothing to indicate: not Samsung firmware, or older than the lockdown. */
-        GREY,
-        /** Odin will be let in: no credential, or maintenance mode holding the door. */
-        GREEN,
-        /** The D2 error: download mode refused while the device is locked. */
-        RED
-    }
 
     static final class Result {
         /** Does this firmware gate download mode at all? */
@@ -66,16 +58,13 @@ final class D2Status {
         final boolean lockscreen;
         /** Is Samsung's maintenance mode on? */
         final boolean maintenance;
-        final Dot dot;
         /** One line naming every input, including the ones the rows leave out. */
         final String detail;
 
-        Result(boolean supported, boolean lockscreen, boolean maintenance,
-               Dot dot, String detail) {
+        Result(boolean supported, boolean lockscreen, boolean maintenance, String detail) {
             this.supported = supported;
             this.lockscreen = lockscreen;
             this.maintenance = maintenance;
-            this.dot = dot;
             this.detail = detail;
         }
 
@@ -96,10 +85,10 @@ final class D2Status {
     /**
      * Settings provider keys Samsung has been seen using for maintenance mode,
      * Global first then Secure. An absent key simply reads back null, so a wrong
-     * guess costs a pessimistic red dot rather than a crash - the submenu row
-     * then reads Off, and the detail line names the key that answered, so if
-     * Samsung renames it in some future firmware a wrong dot is traceable from one
-     * log line instead of failing silently the way the vault read did.
+     * guess costs a maintenance row that reads Off rather than a crash - and the
+     * detail line names the key that answered, so if Samsung renames it in some
+     * future firmware a wrong reading is traceable from one log line instead of
+     * failing silently the way the vault read did.
      */
     private static final String[] MAINTENANCE_KEYS = {
             "maintenance_mode",
@@ -109,9 +98,10 @@ final class D2Status {
 
     /**
      * First security patch level that carries the lockdown. Older firmware has no
-     * DmcService and no vault, so a red dot there would be a lie and it gets a
-     * grey one instead. The patch level is only a proxy for the firmware
-     * generation, which is why it can decide grey-versus-red but never green.
+     * DmcService and no vault, so a claim of a gate there would be a lie and the row
+     * answers "Not gated here" instead. The patch level is only a proxy for the
+     * firmware generation, which is why it can decide whether there is a gate at all
+     * and never what is behind it.
      */
     private static final String FIRST_LOCKDOWN_PATCH = "2026-04-01";
 
@@ -129,31 +119,20 @@ final class D2Status {
         String maintenanceKey = maintenanceModeKey(ctx);
         boolean maintenance = maintenanceKey != null;
 
-        // The bootloader refuses Odin on [1, 0, 0] - a credential, no maintenance
-        // mode and no service authorisation - so a free lock screen or an open
-        // maintenance mode both mean green. at_command is assumed cleared, which
-        // can only ever make the dot too pessimistic, never too optimistic.
-        Dot dot = !supported ? Dot.GREY
-                : (secure && !maintenance) ? Dot.RED : Dot.GREEN;
-
+        // The bootloader refuses Odin on [1, 0, 0] - a credential, no maintenance mode, no
+        // authorisation byte. Two of those three are read here; the third is byte 2, which lives
+        // in the TEE and is what the pill asks the vault for. No verdict is composed from the
+        // two that are available, because the missing one decides it in both directions: a set
+        // credential says nothing while byte 2 is unknown, and a free lock screen says nothing
+        // either - the gate can be held shut by byte 0 alone being wrong.
         StringBuilder d = new StringBuilder();
         d.append(Build.MANUFACTURER).append(' ').append(Build.MODEL)
                 .append(", patch ").append(Build.VERSION.SECURITY_PATCH)
                 .append(": lockscreen=").append(secure ? "credential" : "none")
-                .append(" maintenance=").append(maintenanceKey != null ? maintenanceKey : "off or unreadable")
-                .append(" at_command=0 assumed -> ");
-        switch (dot) {
-            case RED:
-                d.append("red, D2 error expected: download mode refused");
-                break;
-            case GREEN:
-                d.append("green, Odin allowed");
-                break;
-            default:
-                d.append("grey, this device does not gate download mode");
-                break;
-        }
-        return new Result(supported, secure, maintenance, dot, d.toString());
+                .append(" maintenance=").append(maintenanceKey != null ? maintenanceKey : "off or unreadable");
+        d.append(supported ? " | byte 2 not read here, needs root"
+                : " | this firmware does not gate download mode");
+        return new Result(supported, secure, maintenance, d.toString());
     }
 
     private static boolean isSamsung() {

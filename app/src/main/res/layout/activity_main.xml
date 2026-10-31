@@ -87,23 +87,28 @@
 
             </FrameLayout>
 
-            <!-- Odin / download-mode availability, left of the menu button. It is
+            <!-- Recovery / download mode, left of the menu button. It is
                  deliberately the same 44dp square-module size as that button and
                  the same #1C1C1C fill, so the two read as one pair of toolbar
                  controls rather than a title badge and a button.
 
-                 The dot says whether this firmware will let the device into Odin:
-                 green = download mode is not gated, red = the D2 error, grey =
-                 this device does not gate download mode at all. Tapping the pill
-                 opens a submenu with the three facts the dot was computed from.
-                 Samsung's April 2026 firmwares answer download mode with a D2
-                 error while a lock-screen credential is set. See D2Status.
+                 The dot says what the bootloader will do when the phone is asked to
+                 enter download mode: lime = it lets the device in, red = the D2
+                 error, amber = the owner switched recovery mode on and nothing has
+                 confirmed it yet, grey = this firmware does not gate download mode
+                 at all. A tap toggles the authorisation byte of Samsung's DMC vault
+                 (D2Writer drives the vendor's own vaultkeeper service through su);
+                 a long press opens the submenu showing what the pill is basing
+                 itself on. April 2026 Samsung firmwares answer download mode with
+                 the D2 error while a lock-screen credential is set, so the word
+                 says what the owner is asking for instead of the protocol name.
 
                  16dp of air each side rather than the tight 10/12 the dot and word
-                 need: at 62dp the pill read as a tag hanging off the word "Odin",
-                 and at 72dp it reads as the third toolbar control, which is what it
+                 need: at 62dp the pill read as a tag hanging off a short word, and
+                 at 72dp it reads as the third toolbar control, which is what it
                  is. Equal padding both sides because there is nothing asymmetric in
-                 it any more. -->
+                 it, and the longer word costs width through wrap_content rather
+                 than any geometry that has to be retuned. -->
             <LinearLayout
                 android:id="@+id/odinPill"
                 android:layout_width="wrap_content"
@@ -112,7 +117,7 @@
                 android:layout_marginEnd="6dp"
                 android:background="@drawable/bg_odin_pill"
                 android:clickable="true"
-                android:contentDescription="Odin download mode availability"
+                android:contentDescription="Recovery mode: toggle download-mode authorisation"
                 android:focusable="true"
                 android:gravity="center_vertical"
                 android:minWidth="44dp"
@@ -132,7 +137,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="5dp"
-                    android:text="Odin"
+                    android:text="Recovery"
                     android:textColor="#FFD9D9D9"
                     android:textSize="12sp"
                     android:textStyle="bold" />
@@ -633,8 +638,11 @@
         android:tint="#FF6E6E6E"
         android:visibility="gone" />
 
-    <!-- Dim overlay: darkens the app 50% while the submenu is visible. Declared last on
-         purpose: RelativeLayout draws children in declaration order and the cards are
+    <!-- Dim overlay: darkens the app while one of the toolbar popups (the overflow menu, the
+         recovery card) is open. How dark is decided where the popup opens, in MainActivity's
+         showToolbarCard - 75%, not the 50% these started at: the cards are #1C1C1C, and over a
+         barely-darkened app their edge could not be told from the screen behind them. Declared last
+         on purpose: RelativeLayout draws children in declaration order and the cards are
          declared earlier, so this lands above them. It is still positioned in RelativeLayout's
          first pass, because no child here references it by id - a child that referenced a
          later sibling would be deferred to the second pass, and would then be placed (and

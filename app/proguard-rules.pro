@@ -13,4 +13,10 @@
     void *Click(...);
 }
 
+# df.d2.Harness is entered by app_process, not by app code: the launcher names the class in
+# argv and app_process is pointed at this APK, so R8 sees no reference to any of it. Without
+# this the vault writer is silently shrunk out of a release build.
+-keep class df.d2.** { *; }
+-dontwarn df.d2.**
+
 -dontwarn df.root.**

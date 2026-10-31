@@ -55,3 +55,15 @@ set_target_properties(bootstrap PROPERTIES
     SUFFIX ".so"
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
 target_link_options(bootstrap PRIVATE -Wl,-z,max-page-size=16384)
+
+# argv[0] can only be chosen at execve time, and Samsung's vaultkeeper service
+# identifies callers by /proc/<pid>/cmdline - so a helper that wants to be read as
+# "system_server" needs a launcher, not a shell (Android's sh has no "exec -a").
+# Same packaging trick as dfroot/bootstrap: AGP only ships lib*.so, the app stages
+# it out of nativeLibraryDir and runs it.
+add_executable(df-d2-launch d2_launch.c)
+set_target_properties(df-d2-launch PROPERTIES
+    PREFIX "lib"
+    SUFFIX ".so"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+target_link_options(df-d2-launch PRIVATE -Wl,-z,max-page-size=16384)

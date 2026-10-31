@@ -65,8 +65,25 @@ public class MainActivity extends Activity implements IReporter {
      *  only paint that knows how wide "DirtyFrag" renders, and therefore how wide
      *  the update pill has to be to cover it. See showUpdatePill. */
     private int headlinePx;
-    /** The last Odin reading, kept for the pill's submenu. Null until first read. */
+    /** The last public-API reading, kept for the pill's submenu. Null until first read. */
     private D2Status.Result mOdin;
+    /** The last DMC vault reading, taken through su when that was possible. Null until the
+     *  vault has been read once; d2Prefs() keeps it across restarts. See D2Writer. */
+    private D2Writer.Vault mVault;
+    /** Whether a su binary was on the path the last time the root watch looked. The watch exists
+     *  because both halves of the download-mode answer die with a reboot, and the owner restores
+     *  one of them by hand from this screen. See startRootWatch. */
+    private boolean mSuWasPresent;
+    /** The watch itself, null while the app is in the background. See startRootWatch. */
+    private Runnable mRootWatch;
+    /** True once the Autorun Writer's write has been attempted against the current root, so a
+     *  refused or unanswered su stays a state rather than becoming a loop - the rule the switch
+     *  on the card already follows for a press. Cleared when su leaves the path. Written from the
+     *  executor that reads the vault and cleared from the main thread that watches for root, so
+     *  it is volatile rather than a race that happens to work. */
+    private volatile boolean mAutorunTried;
+    /** How often the root watch looks. The look is three file stats, not an su call. */
+    private static final long ROOT_WATCH_MS = 2000L;
     private boolean moduleRefresh;
 
     /** Device-protected storage context: bootstrap.c reads its prefs from
@@ -277,7 +294,7 @@ public class MainActivity extends Activity implements IReporter {
         boolean hasRun = logBuffer.length() > 0
                 || (lastLogFile != null && lastLogFile.exists());
         // The log lives under its own card, so a collapsed card takes the log
-        // with it - "Reset layout" brings both back.
+        // with it - "Reset UI Layout" brings both back.
         logAllowed = advancedLog && hasRun && !hiddenCards.contains("log");
         // VIS4: the log hangs off the advanced-log card, so the window the stack
         // keeps for it follows the log. The stack then does the placing - the
@@ -478,16 +495,24 @@ public class MainActivity extends Activity implements IReporter {
         });
         mExec.execute(this::checkForAppUpdate);
 
-        // Odin / download-mode availability: the pill left of the menu button,
-        // built from the same inputs Samsung writes into its DMC vault, so it
-        // needs no root - see D2Status for why reading the vault itself cannot
-        // work from here. Tapping it opens a submenu of the three facts behind the
-        // dot, which is what makes a wrong dot arguable without a cable.
-        binding.odinPill.setOnClickListener(v -> {
+        // Recovery / download mode: the pill left of the menu button. Pressing it opens the card
+        // of facts behind the dot - the verdict the bootloader will reach for a download-mode
+        // request, and the readings that verdict is built from. The two settings that touch the
+        // byte live inside that card as OneUI switches: inert until Expert Mode is on in the
+        // overflow menu, and inert on firmware that never gates download mode at all. Pressing
+        // the pill can therefore never reach Samsung's vault by accident. D2Writer says how the
+        // write is done; D2Status is the rootless reading the dot and the device row fall back on
+        // when there is no su grant to ask.
+        android.view.View.OnClickListener openRecovery = v -> {
             v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
-            showOdinPopup();
+            showRecoveryPopup();
+        };
+        binding.odinPill.setOnClickListener(openRecovery);
+        binding.odinPill.setOnLongClickListener(v -> {
+            openRecovery.onClick(v);
+            return true;
         });
-        mExec.execute(this::refreshOdin);
+        mExec.execute(this::refreshRecovery);
 
         // SU Manager card: upstream 3.2 deleted the bundled assets/ksud, so the
         // exploit stages libksud.so out of the chosen manager's
@@ -672,10 +697,10 @@ public class MainActivity extends Activity implements IReporter {
             box.setBackgroundResource(R.drawable.popup_bg);
             box.setPadding(0, (int) (6 * md), 0, (int) (6 * md));
 
-            // -- Github Page row --
+            // -- Open Github Page row --
             TextView ghRow = new TextView(this);
             ghRow.setBackgroundResource(R.drawable.menu_row_highlight);
-            ghRow.setText("Github Page");
+            ghRow.setText("Open Github Page");
             ghRow.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.START);
             ghRow.setPadding((int) (20 * md), 0, 0, 0);
             ghRow.setTextColor(0xFFE8E8E8);
@@ -687,46 +712,18 @@ public class MainActivity extends Activity implements IReporter {
             box.addView(ghRow, new android.widget.LinearLayout.LayoutParams(
                     android.view.ViewGroup.LayoutParams.MATCH_PARENT, (int) (46 * md)));
 
-            // -- Expert Mode row: white dot appears when enabled --
-            android.widget.LinearLayout exRow = new android.widget.LinearLayout(this);
-            exRow.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.START);
-            exRow.setPadding((int) (20 * md), 0, 0, 0);
-            TextView exText = new TextView(this);
-            exRow.setBackgroundResource(R.drawable.menu_row_highlight);
-            exText.setText("Expert Mode");
-            exText.setTextColor(0xFFE8E8E8);
-            exText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15);
-            exRow.addView(exText);
-            final android.view.View[] dotRef = {null};
-            android.view.View dot = new android.view.View(this);
-            dot.setBackgroundResource(R.drawable.dot_white);
-            android.widget.LinearLayout.LayoutParams dotLp =
-                    new android.widget.LinearLayout.LayoutParams(
-                            (int) (7 * md), (int) (7 * md));
-            dotLp.setMargins((int) (7 * md), 0, 0, 0);
-            dot.setVisibility(expertMode ? View.VISIBLE : View.GONE);
-            exRow.addView(dot, dotLp);
-            dotRef[0] = dot;
-            exRow.setOnClickListener(v2 -> {
-                v2.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
-                expertMode = !expertMode;
-                createDeviceProtectedStorageContext()
-                        .getSharedPreferences("dfroot", MODE_PRIVATE)
-                        .edit().putBoolean("expert_mode", expertMode).apply();
-                applyExpertMode();
-                if (dotRef[0] != null)
-                    dotRef[0].setVisibility(expertMode ? View.VISIBLE : View.GONE);
-            });
-            box.addView(exRow, new android.widget.LinearLayout.LayoutParams(
-                    android.view.ViewGroup.LayoutParams.MATCH_PARENT, (int) (46 * md)));
-
-            // -- Reset layout row (VIS5): this slot used to hold "Remove
+            // -- Reset UI Layout row (VIS5): this slot used to hold "Remove
             //    KSU/KSUD", which never did anything useful. It now puts the
             //    cards back in the shipped order and brings back every card the
-            //    user hid. --
+            //    user hid.
+            //
+            //    Second row rather than third, and named for what it resets: the menu reads
+            //    action, action, state now, and a two-word label gives back the width that the
+            //    Expert row's switch reserves, so the menu is not a wide grey band with one short
+            //    word in it. --
             TextView rlRow = new TextView(this);
             rlRow.setBackgroundResource(R.drawable.menu_row_highlight);
-            rlRow.setText("Reset layout");
+            rlRow.setText("Reset UI Layout");
             rlRow.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.START);
             rlRow.setPadding((int) (20 * md), 0, 0, 0);
             rlRow.setTextColor(0xFFE8E8E8);
@@ -739,22 +736,48 @@ public class MainActivity extends Activity implements IReporter {
             box.addView(rlRow, new android.widget.LinearLayout.LayoutParams(
                     android.view.ViewGroup.LayoutParams.MATCH_PARENT, (int) (46 * md)));
 
-            // Width: content, but at least 210dp so the popup reads properly.
-            box.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-            int pw_w = Math.max(box.getMeasuredWidth(), (int) (190 * md));
+            // -- Expert Mode row: the same OneUI switch the recovery card uses --
+            // A dot that comes and goes says what is true; a switch says what is true and is also
+            // the thing that changes it, which is what a row that arms every dangerous setting
+            // here ought to be. The label takes the row's remaining width and the row stays the
+            // touch target by routing the tap to the switch, so the flag flips in one place - the
+            // same shape as odinToggleRow, not a second copy of the click logic to fall out of step.
+            //
+            // Last of the three rows and not in the middle of them: the two above are actions that
+            // close the menu when fired, this one is a state that does not, and a switch sitting
+            // between two actions reads like a third thing to fire. It is also the row that decides
+            // whether the writer switches on the recovery card can be moved at all, so it belongs
+            // at the bottom - closest to the card it arms.
+            android.widget.LinearLayout exRow = new android.widget.LinearLayout(this);
+            exRow.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.START);
+            exRow.setPadding((int) (20 * md), 0, (int) (20 * md), 0);
+            exRow.setBackgroundResource(R.drawable.menu_row_highlight);
+            TextView exText = new TextView(this);
+            exText.setText("Expert Mode");
+            exText.setTextColor(0xFFE8E8E8);
+            exText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15);
+            exRow.addView(exText, new android.widget.LinearLayout.LayoutParams(
+                    0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            OneUiSwitch exSwitch = new OneUiSwitch(this);
+            // A state being displayed, not one changed under a finger: a menu that opens with the
+            // thumb sliding in is the view claiming a finger moved it before there was one.
+            exSwitch.setCheckedQuiet(expertMode);
+            exRow.addView(exSwitch, new android.widget.LinearLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT));
+            exSwitch.setOnCheckedChangeListener((view, checked) -> {
+                expertMode = checked;
+                createDeviceProtectedStorageContext()
+                        .getSharedPreferences("dfroot", MODE_PRIVATE)
+                        .edit().putBoolean("expert_mode", expertMode).apply();
+                applyExpertMode();
+            });
+            exRow.setOnClickListener(v2 -> exSwitch.performClick());
+            box.addView(exRow, new android.widget.LinearLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT, (int) (46 * md)));
 
-            final android.widget.PopupWindow pw = new android.widget.PopupWindow(box,
-                    pw_w, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, true);
-            pw.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(
-                    android.graphics.Color.TRANSPARENT));
-            pw.setOutsideTouchable(true);
-            pwRef[0] = pw;
-            pw.setOnDismissListener(() ->
-                    binding.dimOverlay.animate().alpha(0f).setDuration(150)
-                            .withEndAction(() -> binding.dimOverlay
-                                    .setVisibility(View.GONE)).start());
-
-            // Centered separators between the rows.
+            // Centered separators between the rows: after row 1 and after row 2, the Expert row
+            // being the third of them.
             android.widget.LinearLayout.LayoutParams sepLp =
                     new android.widget.LinearLayout.LayoutParams(
                             android.view.ViewGroup.LayoutParams.MATCH_PARENT, Math.max(1, (int) md));
@@ -770,32 +793,12 @@ public class MainActivity extends Activity implements IReporter {
             sep2Lp.setMargins((int) (20 * md), 0, (int) (20 * md), 0);
             box.addView(sep2, 3, sep2Lp);
 
-            box.setOutlineProvider(new android.view.ViewOutlineProvider() {
-                @Override
-                public void getOutline(View view, android.graphics.Outline outline) {
-                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), 26 * md);
-                }
-            });
-            box.setClipToOutline(true);
-            box.setElevation(48 * md);
-
-            int[] loc = new int[2];
-            binding.menuAnchor.getLocationOnScreen(loc);
-            int x = loc[0] + binding.menuAnchor.getWidth() - pw_w;
-            int y = loc[1] + (int) (2 * md);
-            binding.dimOverlay.setVisibility(View.VISIBLE);
-            binding.dimOverlay.setAlpha(0f);
-            binding.dimOverlay.animate().alpha(0.5f).setDuration(150).start();
-            box.setPivotX(pw_w);
-            box.setPivotY(0f);
-            box.setScaleX(0.85f);
-            box.setScaleY(0.9f);
-            box.setAlpha(0f);
-            pw.showAtLocation(binding.menuAnchor,
-                    android.view.Gravity.TOP | android.view.Gravity.START, x, y);
-            box.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(150)
-                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
-                    .start();
+            // Width: content, but at least 190dp so the popup reads properly. Measured with every
+            // row in, since the longest label is the one that decides it - and the switch row now
+            // carries a label of its own instead of a dot.
+            box.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+            int pw_w = Math.max(box.getMeasuredWidth(), (int) (190 * md));
+            pwRef[0] = showToolbarCard(box, pw_w, md);
         });
         ComponentName bootReceiver = new ComponentName(this, BootReceiver.class);
         int state = getPackageManager().getComponentEnabledSetting(bootReceiver);
@@ -1077,7 +1080,7 @@ public class MainActivity extends Activity implements IReporter {
     }
 
     /** VIS1.4: collapse a card out of the stack for good. The SU Manager card
-     *  refuses to be hidden (RULES 3); "Reset layout" brings the rest back. */
+     *  refuses to be hidden (RULES 3); "Reset UI Layout" brings the rest back. */
     private void hideCard(DraggableCardView card) {
         String key = keyForCard(card);
         if (key == null || !card.isHideable() || hiddenCards.contains(key)) return;
@@ -1144,6 +1147,62 @@ public class MainActivity extends Activity implements IReporter {
         super.onResume();
         loadSuManagerPref();
         updateRunButton();
+        startRootWatch();
+    }
+
+    @Override
+    protected void onPause() {
+        stopRootWatch();
+        super.onPause();
+    }
+
+    /**
+     * Watch for root arriving while the app is open, and refresh the recovery reading when it
+     * does.
+     *
+     * <p>The reason this exists is a reboot. It takes both halves of the download-mode answer with
+     * it - the vendor clears byte 2, and DirtyFrag's root is a page-cache patch - so on a phone
+     * that has just come back the app starts with no su to ask, paints grey with "byte 2 not read
+     * here, needs root", and then the owner reroots from this very screen. Nothing used to read the
+     * vault again after that: the pill stayed grey, then went red only once the app was killed and
+     * reopened, which is a fact nobody should have to know in order to find out that the byte needs
+     * writing before they try to flash. Measured on the S25 that developed this feature: exploit
+     * back up at 22:52:20, vault finally answering "not-authorized" at 22:52:28 - eight seconds of
+     * that gap is the process being killed, not the phone thinking about it.
+     *
+     * <p>Edge-triggered on purpose. The look itself is three file stats, but what a change
+     * triggers is a vault read through su, which a root manager may answer with a prompt. Polling
+     * that would be nagging the owner; reacting to su appearing or vanishing is one call per
+     * transition. It runs while the activity is in the foreground for the same reason - a watch in
+     * the background spends grants nobody is there to answer, and the boot path already covers a
+     * device nobody is looking at.
+     */
+    private void startRootWatch() {
+        stopRootWatch();
+        // Seeded with the state at resume, so returning to an app that was already rooted does not
+        // spend a second reading on top of the one the activity already took.
+        mSuWasPresent = D2Writer.suPresent();
+        mRootWatch = new Runnable() {
+            @Override
+            public void run() {
+                boolean up = D2Writer.suPresent();
+                if (up != mSuWasPresent) {
+                    mSuWasPresent = up;
+                    // A root that went away is a root that has not been promised anything yet.
+                    if (!up) mAutorunTried = false;
+                    mExec.execute(MainActivity.this::refreshRecovery);
+                }
+                mMain.postDelayed(this, ROOT_WATCH_MS);
+            }
+        };
+        mMain.postDelayed(mRootWatch, ROOT_WATCH_MS);
+    }
+
+    private void stopRootWatch() {
+        if (mRootWatch != null) {
+            mMain.removeCallbacks(mRootWatch);
+            mRootWatch = null;
+        }
     }
 
     private void setRootedState() {
@@ -1398,7 +1457,7 @@ public class MainActivity extends Activity implements IReporter {
         // as a word, and a capsule cut to that reads as a badge clipped to its own
         // text; 24dp of lime on each side makes it a control with an edge, in the
         // same 44dp module as the two controls to its right. Measured on a 384dp
-        // screen it still stops 54dp short of the Odin pill.
+        // screen it stops clear of the recovery pill on the toolbar's right edge.
         int w = word + Math.round(48 * getResources().getDisplayMetrics().density);
         // The label is given the pill's final width on the way in and centres itself
         // in that, so the growing pill uncovers the word instead of dragging its
@@ -1478,75 +1537,453 @@ public class MainActivity extends Activity implements IReporter {
     }
 
     /**
-     * Reads the Odin / download-mode state and paints the toolbar dot: green when
-     * download mode is not gated, red when the firmware will answer with the D2
-     * error, grey when this device does not gate download mode at all - which is
-     * also what a non-Samsung device gets, so the control never vanishes on a
-     * Galaxy for no visible reason. Runs on the background executor because
-     * D2Status reads the Settings provider; the dot itself is touched on the UI
-     * thread. The inputs go to logcat under this tag as well as into the submenu,
-     * so a dot the owner disagrees with is traceable to the facts that produced it
-     * rather than being a mystery, which is how the vault-reading attempt at this
-     * feature stayed undiagnosable.
+     * Paints the toolbar dot from the best answer available. The vault itself wins when a su
+     * grant let D2Writer read it: those three bytes are exactly what the bootloader weighs
+     * before it starts Odin or prints the D2 error, so the dot stops being an estimate.
+     * Otherwise the dot falls back to the rootless reading in D2Status - green when download
+     * mode is not gated, red when the firmware will answer with the D2 error, grey when this
+     * device does not gate download mode at all, which is also what a non-Samsung device gets,
+     * so the control never vanishes on a Galaxy for no visible reason.
+     *
+     * <p>Runs on the background executor. Probing the Settings provider is a binder round trip
+     * per key, and reading the vault is a su call - which a root manager may answer with a
+     * prompt - so the vault is only reached here when it has answered before or the owner has
+     * switched recovery mode on. Both readings land in logcat under this tag as well as in the
+     * submenu, so a dot the owner disagrees with is traceable to the facts that produced it
+     * rather than being a mystery, which is how the vault-reading attempt at this feature
+     * stayed undiagnosable.
      */
-    private void refreshOdin() {
+    private void refreshRecovery() {
         D2Status.Result r = D2Status.read(this);
+        SharedPreferences sp = d2Prefs();
+        dropStaleVault(sp);
+        boolean armed = sp.getBoolean(PREF_D2_ARMED, false);
+        // Whether the byte survives a reboot is something to measure, not to assume. Measured on
+        // this S25 (SM-S931B, patch 2026-10-05): eighteen minutes into the boot that followed a
+        // write, the vault still answered at_command=1; in the boot after that it answered 0. So
+        // the vendor does clear it, just not on the schedule its own service implies. The vault
+        // is the only thing that can know, so if there is a su on the path, ask - whatever the
+        // saved want says, and especially after a reboot, which is when the saved want is worth
+        // least.
+        // A su on the path is only worth spending where there is a vault to ask. The harness talks
+        // to Samsung's vaultkeeper service, and on firmware that never gated download mode there is
+        // no such service and no record - so asking costs the owner an approval prompt for an answer
+        // this reading already knows, which is the same mistake the write path refuses to make.
+        boolean canAsk = D2Writer.suPresent() && r.supported;
+        D2Writer.Vault vault = canAsk ? D2Writer.status(this) : loadVault(sp);
+        // The "Autorun Writer" want, honoured here as well as at boot. BootReceiver is the place
+        // the byte matters most - a flash is done in the boot the write happens in - but honouring
+        // it there takes three things to line up: the receiver switched on, the exploit succeeding
+        // unattended, and the boot broadcast reaching this app at all. The last one is not ours to
+        // guarantee. On the S25 that developed this feature the boot never did: the boot log holds
+        // no "boot:" line from the receiver and no process start for a broadcast, while One UI's
+        // own broadcast allowlist complains in the same minutes. So the same want is honoured again
+        // against a root that is already in front of us, which is the half the app does control.
+        D2Writer.Vault answered = autorunAtRoot(sp, canAsk, vault);
+        if (canAsk) saveVault(sp, vault);
+        if (answered != vault) saveVault(sp, answered);
+        final D2Writer.Vault v = answered;
         mMain.post(() -> {
-            Log.i(TAG, "odin: " + r.detail);
             mOdin = r;
-            int dot;
-            if (r.dot == D2Status.Dot.GREEN) {
-                dot = 0xFFAEEA00;            // lime, the update pill's all-clear
-            } else if (r.dot == D2Status.Dot.RED) {
-                dot = 0xFFE57373;            // the red the failure bar already uses
-            } else {
-                dot = 0xFF6E6E6E;            // grey: nothing to indicate here
-            }
-            binding.odinDot.setBackgroundTintList(ColorStateList.valueOf(dot));
+            mVault = v;
+            Log.i(TAG, "recovery: " + r.detail + (v == null ? "" : " | vault: " + v.state));
+            applyRecoveryDot(r, v, armed);
         });
     }
+
     /**
-     * The submenu that hangs off the Odin pill: the three facts the dot is
-     * computed from, as three lines. Same rounded card, 46dp rows, hairline
-     * separators, scale-in and dimmed backdrop as the overflow menu, because two
-     * popups that do different jobs should look like the same control. Read-only,
-     * so the rows carry no press highlight and an outside tap closes it.
+     * The write the "Autorun Writer" switch asks for, run against a root that is already there.
+     *
+     * <p>Four things have to be true before a byte is written nobody pressed for: there is a vault
+     * to ask (a su on the path and firmware that gates download mode), the owner switched the want
+     * on, Expert Mode armed the switch that wrote it, and the byte is not already what it should
+     * be. A vault that already answers authorised costs one round trip and no write, which is the
+     * common case on a boot where the boot path did its job.
+     *
+     * <p>One attempt per root, not one per refresh: an su that is refused or left unanswered is a
+     * state to report, and re-asking a root manager that has just said no is how an unattended
+     * feature becomes a prompt loop. The attempt flag is cleared by startRootWatch when su leaves
+     * the path, so the next root - which is what a reboot produces - gets its own attempt.
      */
-    private void showOdinPopup() {
+    private D2Writer.Vault autorunAtRoot(SharedPreferences sp, boolean canAsk, D2Writer.Vault v) {
+        if (!canAsk || mAutorunTried) return v;
+        // Expert Mode is read from prefs rather than from the expertMode field, which is loaded
+        // later in onCreate than the first refresh is queued: a background read that started while
+        // the activity was still being built would otherwise see the flag as unset and skip a write
+        // the owner did ask for.
+        if (!sp.getBoolean("expert_mode", false) || !sp.getBoolean(PREF_D2_AUTO, false)) return v;
+        if (v != null && v.ok && v.atCommand == 1) return v;
+        mAutorunTried = true;
+        // Both sinks, the way a press does it. The run log is the artifact the owner can read back
+        // and share; until now this write existed only in logcat, so a byte that appeared without a
+        // press left no trace in the one place a person looks. Posted because this runs on the vault
+        // executor and appendLog draws into the log view; the attempt goes in before the su leaves,
+        // so a hung or refused grant still has a line above its absence.
+        mMain.post(() -> appendLog(
+                "recovery: autorun writer - this root has no authorisation byte, writing it"));
+        D2Writer.Vault written = D2Writer.authorize(this);
+        Log.i(TAG, "recovery: autorun writer asked the vault: "
+                + (written == null ? "no answer" : written.state));
+        // The same verdict wording a press prints, so one phrase means one fact whichever of the
+        // two paths produced it. The line above is what says nobody pressed.
+        if (written != null) mMain.post(() -> appendLog("recovery: " + verdictLine(true, written)));
+        return written != null ? written : v;
+    }
+
+    /** Whether the boot path exists: the Autorun card's switch is what enables the receiver. */
+    private boolean bootPathEnabled() {
+        return getPackageManager().getComponentEnabledSetting(
+                new ComponentName(this, BootReceiver.class))
+                == PackageManager.COMPONENT_ENABLED_STATE_ENABLED;
+    }
+
+    /**
+     * The dot's colour, from whichever of the two readings is the better one. Kept apart from
+     * refreshRecovery so the startup read and a tap paint it exactly the same way.
+     */
+    private void applyRecoveryDot(D2Status.Result r, D2Writer.Vault v, boolean armed) {
+        final int lime = 0xFFAEEA00;    // lime, the update pill's all-clear
+        final int red = 0xFFE57373;     // the red the failure bar already uses
+        final int grey = 0xFF6E6E6E;    // grey: nothing to indicate here
+        final int amber = 0xFFFFB300;   // asked for, not confirmed
+
+        int dot;
+        if (v != null && v.ok) {
+            // Measured, from the vault's own three bytes: the bootloader refuses Odin on
+            // [lock=1, maintenance=0, at_command=0].
+            dot = v.gated() ? red : lime;
+        } else if (armed) {
+            // A write was asked for on this boot and no su has answered it yet.
+            dot = amber;
+        } else {
+            // Not asked, not answered: nothing to indicate. The public-API reading cannot see
+            // byte 2 and byte 2 is the thing that decides this, so painting the estimate would
+            // be painting a guess - which is what made this dot green on a device whose vault
+            // said not-authorized.
+            dot = grey;
+        }
+        binding.odinDot.setBackgroundTintList(ColorStateList.valueOf(dot));
+    }
+
+    /**
+     * Ask the vault for the byte the button asked for, then say out loud what the vault says
+     * afterwards and hand that answer back to whatever the press came from.
+     *
+     * <p>Byte 2 is Samsung's own service escape hatch - AT+SUDDLMOD / AT+FUS set it, and the
+     * vendor clears it again on its own schedule, which is measured to be no later than the boot
+     * after the one in which it was set - so "on" is a per-boot thing rather than forever, and
+     * the want is kept in prefs only so the submenu can say what it intends while a write is
+     * still in flight. Nothing here ever puts a vault back as it was: the one byte is all that
+     * changes, and the other 31 bytes always go back exactly as they were read.
+     *
+     * <p>A root manager that has never been asked answers the first press with its own prompt,
+     * so a press is exactly one attempt rather than a retry loop: a refused or unanswered su is
+     * reported as the state it is, not retried until somebody presses again.
+     */
+    private void writeDmcFlag(boolean toOn,
+                              java.util.function.Consumer<D2Writer.Vault> onDone) {
+        if (mOdin != null && !mOdin.supported) {
+            // A device whose firmware never gates download mode has no byte worth writing. The
+            // switch that could ask for one is inert there and labelled "(no gate)", so this is the
+            // same rule approached from the other side: should a press arrive anyway, it is answered
+            // with what the card already says rather than with an su grant spent finding out.
+            Log.i(TAG, "recovery: firmware does not gate download mode - no byte to write");
+            onDone.accept(mVault);
+            return;
+        }
+        SharedPreferences sp = d2Prefs();
+        sp.edit().putBoolean(PREF_D2_ARMED, toOn).apply();
+        mExec.execute(() -> {
+            D2Writer.Vault v = toOn ? D2Writer.authorize(this) : D2Writer.clear(this);
+            saveVault(sp, v);
+            mMain.post(() -> {
+                mVault = v;
+                applyRecoveryDot(mOdin, v, toOn);
+                String verdict = verdictLine(toOn, v);
+                Log.i(TAG, "recovery: " + verdict + " | " + v.detail);
+                appendLog("recovery: " + verdict);
+                onDone.accept(v);
+            });
+        });
+    }
+
+    /**
+     * The one line a flip answers with, written to the run log and nowhere else: the card the
+     * press came from is still open in front of the owner and carries the same facts in the three
+     * rows the write can change, so a popup at the bottom of the screen would only repeat them
+     * and cover the switch that is about to be pressed again. A state that is not the one asked
+     * for is named as itself: the service refused, or the record was not a shape the harness
+     * writes.
+     */
+    private static String verdictLine(boolean armed, D2Writer.Vault v) {
+        if (!v.ok) {
+            return (armed ? "could not switch on: " : "could not clear: ") + v.state;
+        }
+        if (armed) {
+            return v.atCommand == 1
+                    ? "recovery mode on - download mode authorised"
+                    : "not authorised (" + v.state + ")";
+        }
+        return v.atCommand == 0
+                ? "recovery mode off - authorisation cleared"
+                : "still authorised (" + v.state + ")";
+    }
+
+    // ---- what the recovery-mode submenu remembers ---------------------------------
+    // Device-protected prefs, the same file bootstrap.c reads out of
+    // /data/user_de/0/df.root/.
+    //
+    // Boot-scoped on purpose, because neither half of this survives a reboot. The byte is
+    // cleared at the end of every boot by the vendor's own design, and DirtyFrag's root is a
+    // page-cache patch, so after a reboot there is no su at all until the exploit has run again
+    // - measured on an S25 four minutes into a fresh boot: "su: inaccessible or not found". An
+    // answer saved on an earlier boot is a rumour, not an answer, and the app used to show it as
+    // one: the pill sat amber and the row said "On" after a reboot while nothing on the device
+    // agreed. d2_vault_mono is elapsedRealtime() at the moment of the answer. That counter
+    // restarts at boot and never runs backwards inside one, so an answer stamped at a point the
+    // counter has not reached can only belong to a boot that is over. A wall-clock stamp would
+    // have been the wrong tool: NTP steps the clock mid-boot, which would have thrown away
+    // answers that were honest.
+
+    /** What the owner asked byte 2 to be, valid for this boot only. */
+    private static final String PREF_D2_ARMED = "d2_at_command";
+    /** The opt-in behind the "Autorun Writer" row: ask for the same write again at boot. Read by
+     *  BootReceiver, which is the only thing at boot that can supply the root the write needs.
+     *  This one is meant to outlive a reboot - everything else here is not. The key keeps the older
+     *  name; the row it comes from was "Re-arm after boot" until the card put the writer first. */
+    private static final String PREF_D2_AUTO = "d2_auto";
+    private static final String PREF_D2_OK = "d2_vault_ok";
+    private static final String PREF_D2_STATE = "d2_vault_state";
+    private static final String PREF_D2_AT = "d2_at_command_value";
+    private static final String PREF_D2_LOCK = "d2_lock";
+    private static final String PREF_D2_MAINT = "d2_maintenance";
+    private static final String PREF_D2_DETAIL = "d2_vault_detail";
+    private static final String PREF_D2_MONO = "d2_vault_mono";
+
+    private SharedPreferences d2Prefs() {
+        return mDeCtx.getSharedPreferences("dfroot", MODE_PRIVATE);
+    }
+
+    private void saveVault(SharedPreferences sp, D2Writer.Vault v) {
+        sp.edit()
+                .putBoolean(PREF_D2_OK, v.ok)
+                .putString(PREF_D2_STATE, v.state)
+                .putInt(PREF_D2_AT, v.atCommand)
+                .putInt(PREF_D2_LOCK, v.lock)
+                .putInt(PREF_D2_MAINT, v.maintenance)
+                .putString(PREF_D2_DETAIL, v.detail)
+                .putLong(PREF_D2_MONO, android.os.SystemClock.elapsedRealtime())
+                .apply();
+    }
+
+    /** The answer kept from the last attempt, or null when the vault was never read on a boot
+     *  that is still happening. */
+    private static D2Writer.Vault loadVault(SharedPreferences sp) {
+        if (!vaultIsFresh(sp)) return null;
+        return new D2Writer.Vault(sp.getBoolean(PREF_D2_OK, false),
+                sp.getString(PREF_D2_STATE, ""),
+                sp.getInt(PREF_D2_AT, -1),
+                sp.getInt(PREF_D2_LOCK, -1),
+                sp.getInt(PREF_D2_MAINT, -1),
+                sp.getString(PREF_D2_DETAIL, ""));
+    }
+
+    /** True when an answer is on file and belongs to the boot this process is in. */
+    private static boolean vaultIsFresh(SharedPreferences sp) {
+        long stamp = sp.getLong(PREF_D2_MONO, -1L);
+        return stamp >= 0 && stamp <= android.os.SystemClock.elapsedRealtime();
+    }
+
+    /**
+     * Forgets the want and the answer when they came from a boot that is over, and logs it once.
+     * Left alone they read as the current state: the want survives a reboot, the byte and the
+     * root that wrote it do not. The automation opt-in is not dropped - it is the only thing in
+     * this block meant to outlive one.
+     */
+    private void dropStaleVault(SharedPreferences sp) {
+        if (vaultIsFresh(sp)) return;
+        if (!sp.getBoolean(PREF_D2_ARMED, false) && !sp.contains(PREF_D2_STATE)) return;
+        sp.edit().remove(PREF_D2_ARMED)
+                .remove(PREF_D2_STATE).remove(PREF_D2_OK).remove(PREF_D2_AT)
+                .remove(PREF_D2_LOCK).remove(PREF_D2_MAINT).remove(PREF_D2_DETAIL)
+                .remove(PREF_D2_MONO).apply();
+        Log.i(TAG, "recovery: want and vault answer from an earlier boot dropped - neither the "
+                + "byte nor the root that wrote it survives reboot");
+    }
+    /**
+     * The submenu that hangs off the recovery pill: the verdict the bootloader will reach for a
+     * download-mode request, the public inputs that verdict is built from, the device reading that
+     * says whether any of this applies here, and the two settings that can be moved from the card.
+     * Same rounded card at one fixed width, 46dp rows, hairline separators, scale-in and dimmed
+     * backdrop as the overflow menu, because two popups that do different jobs should look like the
+     * same control - and because a card that resizes itself between opens moves the switch a finger
+     * is already reaching for.
+     *
+     * <p>Below the rows sit the two things that can be set from here: the write itself, and the
+     * automation that asks for it again on the next boot ("Autorun Writer"). Both are OneUI
+     * switches, on the card whether or not Expert Mode is on, inert and labelled "(Expert)" until
+     * it is, and inert and labelled "(no gate)" on firmware that never gated download mode - so a
+     * control is visible before it is armed and says which kind of not-live it is. The writer's
+     * thumb is the measured state of the byte, and it is the vault's answer rather than the request
+     * that leaves it where it ends up. That is also why the pill opens this submenu instead of
+     * acting: nothing here changes Samsung's vault unless the owner has Expert Mode on, the
+     * firmware has a gate to write behind, and a switch that says what it will do has been moved.
+     *
+     * <p>Nothing here answers with a toast. The three rows a write can change are on the card, so
+     * a popup at the bottom of the screen would only repeat what the card already says and cover
+     * the switch that is about to be pressed again.
+     *
+     * <p>Everything above them describes this boot and nothing else. The byte is cleared at the
+     * end of every boot, and the root that writes it is a page-cache patch a reboot erases, so an
+     * answer from a finished boot is dropped rather than displayed - the alternative is a menu
+     * that says "Yes" about a device that has already forgotten it.
+     */
+    private void showRecoveryPopup() {
         D2Status.Result r = mOdin;
         if (r == null) {
-            // The first tap beat the background read. Reading here costs three
-            // binder round trips on a tap, which is the one moment that is free.
+            // The first press beat the background read. Reading here costs three
+            // binder round trips on a press, which is the one moment that is free.
             r = D2Status.read(this);
             mOdin = r;
         }
         float md = getResources().getDisplayMetrics().density;
         final D2Status.Result shown = r;
+        final SharedPreferences sp = d2Prefs();
+        dropStaleVault(sp);
+        final D2Writer.Vault vault = mVault;
+
+        // One row for what the bootloader will answer a download-mode request with, instead of one
+        // row per byte behind that answer. The bootloader weighs the whole record and the write
+        // moves the authorisation byte inside it, so the verdict is the thing that can be acted on;
+        // the byte the switch controls is already on the card as the thumb's position. Its value
+        // cell is kept because a write has to repaint the menu it was asked from rather than leave
+        // it describing the vault as it was before the press.
+        final android.widget.TextView[] verdictValue = new android.widget.TextView[1];
 
         android.widget.LinearLayout box = new android.widget.LinearLayout(this);
         box.setOrientation(android.widget.LinearLayout.VERTICAL);
         box.setBackgroundResource(R.drawable.popup_bg);
         box.setPadding(0, (int) (6 * md), 0, (int) (6 * md));
 
+        box.addView(odinRow("DL/Recovery", dlRecoveryLabel(shown, vault), verdictValue), odinRowLp(md));
+        box.addView(odinSep(md), odinSepLp(md));
         box.addView(odinRow("Lockscreen", shown.lockscreenLabel()), odinRowLp(md));
         box.addView(odinSep(md), odinSepLp(md));
         box.addView(odinRow("Maintenance Mode", shown.maintenanceLabel()), odinRowLp(md));
         box.addView(odinSep(md), odinSepLp(md));
         box.addView(odinRow("Device", shown.deviceLabel()), odinRowLp(md));
 
-        box.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        int pw_w = Math.max(box.getMeasuredWidth(), (int) (230 * md));
+        // Whether either switch below can be moved at all. Expert Mode arms them; the firmware has
+        // to have something for them to do. A device whose firmware never gates download mode has
+        // no byte to write and no boot to re-arm it for, so both are inert there - and the reason
+        // they are inert is said on the row rather than left to a dimmer colour.
+        final boolean writerLive = expertMode && shown.supported;
 
-        final android.widget.PopupWindow pw = new android.widget.PopupWindow(box,
-                pw_w, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, true);
-        pw.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(
-                android.graphics.Color.TRANSPARENT));
-        pw.setOutsideTouchable(true);
-        pw.setOnDismissListener(() ->
-                binding.dimOverlay.animate().alpha(0f).setDuration(150)
-                        .withEndAction(() -> binding.dimOverlay
-                                .setVisibility(View.GONE)).start());
+        // The write is a switch, which makes the thumb's position the state of the byte: right
+        // means the vault answered at_command=1, measured on this boot. That is also why the answer
+        // and not the request is what the switch is left showing - if the service refused, the thumb
+        // slides back on its own and the verdict row above changes with it. Inert and labelled
+        // "(Expert)" until Expert Mode is armed, inert and labelled "(no gate)" on firmware that
+        // never gates download mode, never hidden: a control that only appears once the dangerous
+        // setting is armed has to be hunted for again later.
+        box.addView(odinSep(md), odinSepLp(md));
+        final OneUiSwitch[] writeSw = new OneUiSwitch[1];
+        final TextView[] writeName = new TextView[1];
+        box.addView(odinToggleRow(switchName("Recovery Writer", writerLive, shown.supported),
+                vault != null && vault.ok && vault.atCommand == 1, writerLive,
+                writeSw, writeName), odinRowLp(md));
+        if (writerLive) {
+            writeSw[0].setOnCheckedChangeListener((view, want) -> {
+                // One attempt per flip, and the switch is inert while that attempt is in flight:
+                // a root manager that is not answering must not be flippable into a loop of su
+                // calls. Its answer is the only thing allowed to move the thumb again.
+                writeSw[0].setEnabled(false);
+                writeName[0].setText(want ? "Writing flag ..." : "Clearing flag ...");
+                writeDmcFlag(want, answered -> {
+                    verdictValue[0].setText(dlRecoveryLabel(shown, answered));
+                    writeName[0].setText(switchName("Recovery Writer", writerLive, shown.supported));
+                    // What the vault answered, not what was asked for. The firmware-that-does-not
+                    // -gate path hands back the vault as it was, which before a read is no vault
+                    // at all - in which case the honest position is off.
+                    writeSw[0].setChecked(answered != null && answered.ok
+                            && answered.atCommand == 1);
+                    writeSw[0].setEnabled(writerLive);
+                });
+            });
+        }
 
+        // Under the write sits the one setting here meant to outlive a reboot: it asks for the same
+        // write again on the next boot, which is the only boot where the byte can matter. Both
+        // halves of this are per boot - the vendor clears the byte, the reboot erases the root - so
+        // wanting it on has to be a step that runs after the exploit does. BootReceiver.armD2Vault
+        // performs it; this row only sets the flag in the same device-protected prefs file, and the
+        // switch that arms that run is the one that arms the autorun it depends on.
+        //
+        // A want the boot path would refuse is worse than a want never set, so this switch is inert
+        // on firmware that never gates download mode as well as without Expert Mode: what it would
+        // ask for is a write nothing on that device can perform. A want stored earlier is left in
+        // prefs rather than quietly dropped - the security patch that decides this is only a proxy
+        // for the firmware generation, and a proxy that turns out wrong should not have cost the
+        // owner a setting they had to opt into in the first place.
+        //
+        // A switch and not a word to tap: OneUI draws a switch where a setting outlives the screen
+        // that sets it, and this is the only flag on the card that does.
+        box.addView(odinSep(md), odinSepLp(md));
+        final OneUiSwitch[] autoSw = new OneUiSwitch[1];
+        // Where the re-arm will actually come from. The boot path is the Autorun card's switch, and
+        // One UI withholds the boot broadcast from background apps whatever that switch says - on
+        // the S25 that developed this feature it never arrived at all. Saying which of the two the
+        // owner has costs one suffix on a row they are already reading, and saves them finding out
+        // by rebooting.
+        final boolean wantAuto = sp.getBoolean(PREF_D2_AUTO, false);
+        String autoName = switchName("Autorun Writer", writerLive, shown.supported);
+        if (wantAuto && writerLive && !bootPathEnabled()) autoName += " (at reroot)";
+        box.addView(odinToggleRow(autoName,
+                wantAuto, writerLive, autoSw, null), odinRowLp(md));
+        autoSw[0].setOnCheckedChangeListener((view, checked) ->
+                sp.edit().putBoolean(PREF_D2_AUTO, checked).apply());
+
+        // One fixed card, not a card cut to its contents. What is on it is fixed - four rows of
+        // label/value and two switches, with labels of similar length - so a measured width only
+        // ever moved between opens: the card grew or shrank by a few dp and shifted the switch a
+        // finger was already reaching for. 300dp is what the longest label here needs; the clamp
+        // keeps it inside a narrow screen.
+        int pw_w = Math.min((int) (300 * md),
+                getResources().getDisplayMetrics().widthPixels - (int) (16 * md));
+
+        // Everything the two toolbar popups share - the corner under the toolbar they both hang
+        // from, the screen darkened behind them, the frame that gives a raised card room to cast a
+        // shadow, the scale-in out of that corner - lives in showToolbarCard. Two call sites means
+        // two chances for the menu and this card to look like different kinds of control, which is
+        // exactly what they no longer are.
+        showToolbarCard(box, pw_w, md);
+    }
+
+    /**
+     * Hang a finished card under the toolbar: right edge dead on {@code menuAnchor}'s, top just
+     * below it. Both toolbar popups - the overflow menu and the recovery card - come through here,
+     * because everything left in this method belongs to both of them: the corner, the darkened
+     * screen behind, the frame a raised card needs to cast a shadow in, and the scale-in that
+     * grows out of the corner instead of out of the middle. The overflow menu keeps the returned
+     * popup for one reason only: a row inside it closes the menu.
+     *
+     * <p>The card is not the window's content view - a transparent frame with room around it is.
+     * A raised view's shadow is painted by its parent, and a window cut exactly to the card cuts
+     * that shadow at the window's own edge, which is what made 48dp of elevation read as a
+     * hairline of a line here. The frame gives the shadow somewhere to fall, and the window is the
+     * frame's size rather than the card's. Room only counts where the screen has room, so each
+     * side is capped by what is actually left of it - the card's right edge sits 8dp from the
+     * screen edge, and no frame can conjure shadow out of that.
+     *
+     * <p>That room now belongs to the window, so a tap in it would otherwise be swallowed. The
+     * frame forwards any tap that is not on the card as a dismiss, which is what tapping beside a
+     * popup has always meant.
+     *
+     * @param pw_w the card's width, already settled by the caller; the frame's room is added on
+     *             top of it here and subtracted again below, so the card still lands where the
+     *             caller put it.
+     */
+    private android.widget.PopupWindow showToolbarCard(View box, int pw_w, float md) {
         box.setOutlineProvider(new android.view.ViewOutlineProvider() {
             @Override
             public void getOutline(View view, android.graphics.Outline outline) {
@@ -1554,30 +1991,62 @@ public class MainActivity extends Activity implements IReporter {
             }
         });
         box.setClipToOutline(true);
-        box.setElevation(48 * md);
+        box.setElevation(72 * md);
 
-        // Right-aligned under the pill, which is how the overflow menu hangs off
-        // its own button. Clamped to an 8dp margin so a popup wider than the
-        // screen cannot walk off the left edge.
         int[] loc = new int[2];
-        binding.odinPill.getLocationOnScreen(loc);
-        int x = Math.max((int) (8 * md),
-                loc[0] + binding.odinPill.getWidth() - pw_w);
-        int y = loc[1] + binding.odinPill.getHeight() + (int) (4 * md);
+        binding.menuAnchor.getLocationOnScreen(loc);
+        int cardRight = loc[0] + binding.menuAnchor.getWidth();
+        int screenW = getResources().getDisplayMetrics().widthPixels;
+        int room = (int) (40 * md);
+        int roomLeft = Math.max(0, cardRight - pw_w);
+        int roomRight = Math.max(0, screenW - cardRight);
+        int padL = Math.min(room, roomLeft);
+        int padR = Math.min(room, roomRight);
+        int padT = Math.min(room, Math.max(0, loc[1] + (int) (2 * md)));
 
+        android.widget.FrameLayout frame = new android.widget.FrameLayout(this);
+        frame.setPadding(padL, padT, padR, room);
+        frame.addView(box, new android.widget.FrameLayout.LayoutParams(
+                pw_w, android.view.ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        final android.widget.PopupWindow pw = new android.widget.PopupWindow(frame,
+                pw_w + padL + padR, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, true);
+        pw.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(
+                android.graphics.Color.TRANSPARENT));
+        pw.setOutsideTouchable(true);
+        frame.setOnTouchListener((view, ev) -> {
+            if (ev.getAction() != android.view.MotionEvent.ACTION_DOWN) return false;
+            int[] at = new int[2];
+            box.getLocationOnScreen(at);
+            boolean onCard = ev.getRawX() >= at[0] && ev.getRawX() < at[0] + box.getWidth()
+                    && ev.getRawY() >= at[1] && ev.getRawY() < at[1] + box.getHeight();
+            if (!onCard) pw.dismiss();
+            return !onCard;
+        });
+        pw.setOnDismissListener(() ->
+                binding.dimOverlay.animate().alpha(0f).setDuration(150)
+                        .withEndAction(() -> binding.dimOverlay
+                                .setVisibility(View.GONE)).start());
+
+        // Darker than the 50% these two popups used to lay over the app. Both cards are #1C1C1C
+        // sitting on a dark screen, so the only thing between card and app was the shadow - and a
+        // card whose edge cannot be told from the screen behind it reads as part of the screen.
+        // Deepening the dim is the half of that separation the shadow cannot supply on its own.
         binding.dimOverlay.setVisibility(View.VISIBLE);
         binding.dimOverlay.setAlpha(0f);
-        binding.dimOverlay.animate().alpha(0.5f).setDuration(150).start();
+        binding.dimOverlay.animate().alpha(0.75f).setDuration(150).start();
         box.setPivotX(pw_w);
         box.setPivotY(0f);
         box.setScaleX(0.85f);
         box.setScaleY(0.9f);
         box.setAlpha(0f);
-        pw.showAtLocation(binding.odinPill,
-                android.view.Gravity.TOP | android.view.Gravity.START, x, y);
+        pw.showAtLocation(binding.menuAnchor,
+                android.view.Gravity.TOP | android.view.Gravity.START,
+                cardRight - pw_w - padL, loc[1] + (int) (2 * md) - padT);
         box.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(150)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator())
                 .start();
+        return pw;
     }
 
     /**
@@ -1587,6 +2056,16 @@ public class MainActivity extends Activity implements IReporter {
      * one and the answer is what the eye lands on.
      */
     private android.widget.LinearLayout odinRow(String label, String value) {
+        return odinRow(label, value, null);
+    }
+
+    /**
+     * odinRow again, with the value cell handed back through slot[0]. The three rows a write
+     * can change need that: the answer has to be painted into the menu that is already open,
+     * not left describing the vault as it was before the press.
+     */
+    private android.widget.LinearLayout odinRow(String label, String value,
+                                                android.widget.TextView[] slot) {
         float md = getResources().getDisplayMetrics().density;
         android.widget.LinearLayout row = new android.widget.LinearLayout(this);
         row.setOrientation(android.widget.LinearLayout.HORIZONTAL);
@@ -1607,6 +2086,52 @@ public class MainActivity extends Activity implements IReporter {
         row.addView(state, new android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT));
+        if (slot != null) slot[0] = state;
+        return row;
+    }
+
+    /**
+     * A submenu row whose right-hand half is a OneUI switch instead of a word: the label asks
+     * the question, the thumb answers it. The whole row is the touch target - the switch itself
+     * is 46x28dp, which is small next to a 46dp row, and OneUI rows have always taken a tap
+     * anywhere along them and flipped the switch at their end.
+     *
+     * <p>{@code enabled} is Expert Mode. An inert switch is drawn dimmed with "(Expert)" on its
+     * label instead of being left off the card, so the control is visible before it is armed.
+     * The switch handles its own click, so the row has to route the tap to it; when the switch
+     * is disabled that route ends at a performClick that refuses, which is the whole of the
+     * gating - there is no second copy of the Expert Mode check to fall out of step.
+     */
+    private android.widget.LinearLayout odinToggleRow(String label, boolean checked,
+                                                      boolean enabled,
+                                                      OneUiSwitch[] switchSlot,
+                                                      android.widget.TextView[] labelSlot) {
+        float md = getResources().getDisplayMetrics().density;
+        android.widget.LinearLayout row = new android.widget.LinearLayout(this);
+        row.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.START);
+        row.setPadding((int) (20 * md), 0, (int) (20 * md), 0);
+
+        TextView name = new TextView(this);
+        name.setText(label);
+        // The same grey the label half of a value row is drawn in, dimmed further when the
+        // switch cannot be moved: the row is still readable, it is just not live.
+        name.setTextColor(enabled ? 0xFF9E9E9E : 0xFF6F6F6F);
+        name.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15);
+        row.addView(name, new android.widget.LinearLayout.LayoutParams(
+                0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        OneUiSwitch sw = new OneUiSwitch(this);
+        sw.setCheckedQuiet(checked);
+        sw.setEnabled(enabled);
+        if (!enabled) sw.setAlpha(0.4f);
+        row.addView(sw, new android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        row.setOnClickListener(v -> sw.performClick());
+        if (switchSlot != null) switchSlot[0] = sw;
+        if (labelSlot != null) labelSlot[0] = name;
         return row;
     }
 
@@ -1631,6 +2156,37 @@ public class MainActivity extends Activity implements IReporter {
                         Math.max(1, (int) md));
         lp.setMargins((int) (20 * md), 0, (int) (20 * md), 0);
         return lp;
+    }
+
+    /**
+     * The card's one verdict row: what the bootloader will answer a download-mode request with,
+     * which is also what having recovery mode on or off amounts to for this firmware. Only the
+     * vault's own three bytes can answer it - the bootloader weighs [lock, maintenance, at_command]
+     * and refuses Odin on [1, 0, 0] - so the row says "Unknown" whenever they have not been read,
+     * and the public-API reading has no part in the wording: it is missing the one byte that
+     * decides the answer in both directions. A device whose firmware never gated download mode at
+     * all gets that said out loud, because "Unknown" there would promise a reading that can never
+     * arrive - and that is said ahead of any answer cached from earlier in the boot, so the card
+     * cannot show a verdict for a firmware that has no gate able to produce one. The byte the
+     * writer switch controls is not given a row of its own any more; its thumb is that byte, on the
+     * same card.
+     */
+    private static String dlRecoveryLabel(D2Status.Result est, D2Writer.Vault v) {
+        if (!est.supported) return "Not gated here";
+        if (v != null && v.ok) return v.gated() ? "D2 Blocked" : "Allowed";
+        return "Unknown";
+    }
+
+    /**
+     * What a toggle row is called: bare when the switch can be moved, "(Expert)" when the arming
+     * switch is off, "(no gate)" when this firmware has nothing for the switch to do. Two different
+     * reasons for being inert should not offer the same excuse, and the difference between "not
+     * armed yet" and "will never be live here" is the difference between coming back later and
+     * coming back never.
+     */
+    private static String switchName(String base, boolean live, boolean supported) {
+        if (!supported) return base + " (no gate)";
+        return live ? base : base + " (Expert)";
     }
 
 
@@ -1923,6 +2479,11 @@ public class MainActivity extends Activity implements IReporter {
                     setRootedState(false);
                 }
                 updateLogVisibility();
+                // The root this screen just put there is the fastest chance there is to read the
+                // vault behind it, and the download-mode verdict is that read. The root watch sees
+                // the same transition a beat later; asking now is what keeps the pill from
+                // describing a boot that ended minutes ago.
+                if (rooted) mExec.execute(MainActivity.this::refreshRecovery);
             });
         }
     }
