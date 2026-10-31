@@ -31,7 +31,8 @@ hardening) and keeps upstream's SU-manager agnostic design.
 A fresh install of DirtyFrag gets a new Android UID, so the grant in the manager has to be given
 again after every reinstall.
 
-<img width="540" height="1170" alt="Screenshot_20261015_220718" src="https://github.com/user-attachments/assets/bd727962-a520-4820-a91a-90147aa84faa" />
+<img width="540" height="1170" alt="Screenshot_20261101_001753" src="https://github.com/user-attachments/assets/78a9a0ce-7769-4107-8fcd-623f2df1c073" />
+
 
 
 ## Features
