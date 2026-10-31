@@ -145,3 +145,15 @@ next privileged call to the hooked function runs the shellcode, which loads the 
 - Original PoC and various code: https://github.com/lsposed/lspromise
 - SELinux permissive kernel modules and various code: https://github.com/polygraphene/DFReroot
 - Unprivileged XFRM socket method: https://github.com/combeng6th/DirtyInit
+
+## License
+
+GPL-2.0-only - the full text is in [LICENSE](LICENSE), the file upstream added in `4ec133c` because
+the upstream maintainer asked for one. Upstream keeps its own copyright on its code; everything this
+fork adds on top of it is licensed under the same GPL-2.0-only, from the 1.17 merge onward.
+
+That single licence has one consequence worth stating before anyone ports code in: **GPL-2.0-only
+cannot absorb GPL-3.0-only code**. A GPL-3 reference - the Samsung download-mode (Odin) work, for
+example - may be read for behaviour, record formats and API naming, and none of its code may be
+copied, translated or linked into this tree. The same rule is written down in
+[docs/d2-download-mode-writer.md](docs/d2-download-mode-writer.md).
