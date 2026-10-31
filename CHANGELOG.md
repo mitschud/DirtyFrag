@@ -9,6 +9,60 @@
   `rmmod oplus_*` chain behind issue #21, and it only writes the `dfm0`/`dfm1` markers our progress bar
   does not read.
 
+## 1.17
+
+Based on upstream DFRoot 4.6 - 4.7 (upstream 4.6 - 4.7 merged into this fork). `versionCode` 34, `versionName` 1.17.
+
+### Engine - the instruction patch stopped guessing prologues
+- `patch_fn_ret_zero()` no longer decodes a `BTI`/`PACIASP`/`PACIBSP` preamble to find where the
+  prologue ends, and no longer chooses `retaa`/`retab` per SoC. It writes three words - `BTI C`,
+  `MOV x0, #0`, `RET` - at the function entry. `BTI C` is a legal landing pad and a plain NOP where
+  BTI is not enforced, and the bare `RET` is correct because the whole prologue is replaced rather
+  than branched into, so a return is never reached through an authenticated path. This removes the
+  per-vendor guessing that 1.16's preamble walk was.
+- `bootstrap.c` lost its `fork()` child that rewrote `/proc/self/attr/current` to `u:r:init:s0`. The
+  kernel module now sets the context at exec time with
+  `echo -n 'u:r:init:s0' > /proc/self/attr/exec` inside the `call_usermodehelper_exec` command line,
+  so the label applies to the execed image and there is no child process to wait for.
+
+### Engine - SELinux on kernels that cannot be made permissive
+- Writing `selinux_state` to false does nothing on a kernel built with
+  `CONFIG_SECURITY_SELINUX_DEVELOP=n`, so the module now reads `selinux_state` back and, when it is
+  still true, patches `avc_has_perm` and `avc_has_perm_noaudit` to return 0 instead - both of them,
+  because most denials surface through the noaudit path first (upstream #172).
+
+### Engine - other upstream fixes
+- `persist.log.tag` starting with `S` means Developer Options "Log buffer size" is Off, which leaves
+  the exploit unable to read back its own logcat output. ExploitRunner now says so up front and asks
+  for another value, instead of failing later with an unexplained timeout (upstream #173).
+- Upstream "Fix kernel compatibility" and "Fix oppo devices" (0fed9a8, 452191a) come along with the
+  merge.
+
+### Licensing
+- The repository now carries the GPL-2.0 `LICENSE` file upstream added in 4ec133c, as the upstream
+  maintainer requested. Until now this fork had no licence at all. Everything under GPLv2 from this
+  release on; note that means GPL-3-only code cannot be copied in, so the D2 work below is written
+  against the documented record format rather than lifted from GPL-3 projects.
+
+### Build
+- `build-lkms` no longer runs a second `llvm-objcopy` pass over the module. `lkm/Makefile` owns the
+  section diet, and that list deliberately keeps `.note.gnu.build-id`. The extra pass in the workflow
+  was stripping it, so the modules CI embedded in 1.15 and 1.16 had no build-id even though 1.16's
+  notes claimed they did - the tracked `app/src/main/jni/ko/*.ko` confirm it (`readelf -S` shows no
+  such section). That is a loading regression on the Galaxy A34 the section was kept for, and this is
+  what fixes it. It also makes CI output match, byte for byte, what the root Makefile produces in the
+  same DDK image.
+- `lkm/Makefile` defaults `OBJCOPY ?= llvm-objcopy`. Upstream's diet recipe is written as `$(OBJCOPY)`
+  with no definition in the tree and relies on the DDK image exporting it; a missing value would make
+  the recipe expand to nothing and silently skip the diet.
+
+### Before the tag is cut
+- The eight tracked `app/src/main/jni/ko/dfroot-<KMI>.ko` are still the ones built from the 1.16 tree.
+  Rebuilding them needs the `ghcr.io/ylarod/ddk-min` containers, which this machine cannot run (no
+  container runtime). CI rebuilds all eight from source on every push and downloads them into
+  `app/src/main/jni/ko/` before assembling the APK, so published builds are current; refresh the
+  tracked copies from the `build-lkms` artifacts before tagging, the way `d9c8861` did for 1.16.
+
 ## 1.16
 
 Based on upstream DFRoot 4.5 (upstream 4.2 - 4.5 merged into this fork).
