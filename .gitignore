@@ -16,6 +16,7 @@ keystore.jks
 app/keystore.jks
 *.log
 apk/
+.DS_Store
 
 # LKM build artifacts
 lkm/*.cmd

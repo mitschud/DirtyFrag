@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Press highlight for a row that sits INSIDE a DraggableCardView, so it must not
+     bring its own surface: the card draws the fill, the 26dp corners and, while the
+     card is held, the lighter fill and the white outline. menu_row_highlight carries
+     an opaque #1C1C1C rounded rect for exactly that reason (a popup row needs one),
+     and laying that over the card squared the card's corners and hid the held look
+     completely. Here the white shape is only the ripple MASK - nothing is painted at
+     rest, and the ripple is still clipped to the card's own radius. -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#4D6E6E6E">
+    <item android:id="@android:id/mask">
+        <shape android:shape="rectangle">
+            <corners android:radius="26dp" />
+            <solid android:color="#FFFFFFFF" />
+        </shape>
+    </item>
+</ripple>

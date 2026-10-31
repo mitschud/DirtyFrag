@@ -9,6 +9,136 @@
   `rmmod oplus_*` chain behind issue #21, and it only writes the `dfm0`/`dfm1` markers our progress bar
   does not read.
 
+### UI - the app carries no androidx at all
+- `appcompat`, `material`, `constraintlayout` and the viewbinding plugin are out of the dependency
+  block, and with them the roughly forty androidx/material artifacts they pulled into the APK.
+  `gradle.properties` lost its `android.useAndroidX=true` line too, so nothing in the build mentions
+  the library any more: `:app:dependencies` resolves no androidx artifact and the dex carries no
+  `Landroidx/` string. AGP's built-in Kotlin support is off in the same file, because it was the only
+  thing still putting a runtime dependency - `kotlin-stdlib`, which no source file asks for - on the
+  classpath; the report now says "No dependencies" and the release APK is 271 kB.
+- `MainActivity` extends `android.app.Activity`, the app bar is a `FrameLayout` around
+  `android.widget.Toolbar`, and `Theme.DirtyFrag` parents `@android:style/Theme.Material.NoActionBar`
+  instead of a Material3 DayNight dynamic-colour theme. That parent was the one letting the wallpaper
+  palette into every attribute the theme left unset; the dark ramp it resolves to is now written out
+  line by line.
+- Four hand-written pieces replace what the libraries drew. `PillButton` is a `Button` that builds its
+  own `GradientDrawable` fill and hairline stroke inside a `RippleDrawable`, and reads the same
+  `app:strokeWidth` / `app:strokeColor` the layout writes on the Run pill. `DraggableCardView` extends
+  `FrameLayout` and reads `app:cardBackgroundColor` / `cardCornerRadius` / `strokeWidth` /
+  `strokeColor` from a `declare-styleable` of our own in `res/values/attrs.xml` - the names are the
+  Material ones on purpose, so the layout still says what it used to. `ActivityMainBinding` resolves
+  every id once at inflate, and only its import and the inflate line differ from what the plugin
+  generated.
+- `activity_main.xml` is a `RelativeLayout`. The Run pill's 26% inset and 48% width were the only
+  guideline geometry in the file, and `MainActivity` already computed both in pixels for the compact
+  animation (`PILL_INSET_FRACTION`, `pillPercent`); `applyRunPillGeometry()` is that arithmetic with
+  the parent's width handed to it, called once from `onCreate` before the first measure and then frame
+  by frame while the width animates.
+- Two anchoring bugs the translation surfaced, both fixed here: the log window was being placed twice,
+  because `CardStackLayout.setLogWindow()` already parks it with a top margin measured from the stack's
+  own bottom edge, while an XML rule anchoring the stack above the panel made the stack's height depend
+  on where the panel ended up; and the two bottom circles were anchored along the wrong side of the Run
+  pill, while their 12dp margins had always described them as flanking it.
+- Four resources nobody read went with the libraries. `res/menu/menu_main.xml` - the overflow is a
+  hand-drawn `PopupWindow` now, and nothing has inflated that menu since options menus left the app
+  in the V3.0 refactor, so its three ids were padding the resource table. `ic_play` and
+  `menu_item_bg` had outlived the layouts that used them, and the `ic_launcher_background` colour was
+  a duplicate the adaptive icon never pointed at: the icon only ever references the drawable of that
+  name, which is where that hex and its note now live. `lintDebug` reports no unused resources and
+  no errors.
+
+### UI - the pill paints its own fill, and the share circle comes back on screen
+- `PillButton` extends `TextView`, not `Button`. A framework `Button` arrives with the platform's
+  button style, and OneUI's style installs a background of its own behind the one this class builds,
+  so the pill was being painted twice. A text view has no default style, so the only background it
+  owns is the `GradientDrawable` built here; the centring, the click and the focus that `Button` gave
+  for free are now set explicitly, and `getAccessibilityClassName()` answers `Button` so TalkBack
+  still reads a button.
+- Fill and press highlight are no longer nested inside one another. A shape installed inside another
+  drawable is copied on the way in, so every later `setColor` landed on a copy nothing drew: the Run
+  pill sat at the layout's `#7A7A7A` while the code believed it had painted it `#1F1F1F`. The
+  `backgroundTint` the XML put on the view is dropped for the same reason - a `SRC_IN` tint over a
+  shape that already carries a colour replaces that colour outright, which is what flashed the pill
+  bright green mid-animation. The shape is the background, the ripple a content-less `RippleDrawable`
+  in the foreground clipped by its own rounded-rect stencil, and every fill or stroke change now
+  ends in an explicit `invalidate()`.
+- The SU-manager row inside the draggable card takes a new `card_row_ripple` in place of
+  `menu_row_highlight`. The old drawable carries an opaque `#1C1C1C` rounded rect, which is right for
+  a popup row that has to bring its own surface, but laid over the card it squared off the card's
+  26dp corners and hid the lighter fill and white outline that say the card is being held. Here the
+  white shape is only the ripple mask, so nothing paints at rest and the ripple still stops at the
+  card's own radius.
+- The share button was never hidden, it was laid out off the left edge of the screen:
+  `layout_toStartOf="@id/btnRun"` resolves against the pill's own rule (`alignParentStart`, x = 0)
+  and ignores the `leftMargin` that `applyRunPillGeometry()` writes at runtime. `dumpsys activity top`
+  put the circle at x = -186..-34 - `VISIBLE`, enabled, clickable, entirely past the edge. It is
+  pinned to `alignParentStart` with a 33dp fall-back margin, and the same method mirrors the pill on
+  every geometry change - inset, minus `round(12dp)`, minus the circle's width - which puts both gaps
+  on the same 34 px. Measured on device: circle 94-246, Rooted pill 280-612, Manager pill 646-978.
+
+### Fix - opening a saved log crashed below Android 14
+- `readLastLog()` normalises the exploit-result header with `Matcher.appendReplacement` and
+  `appendTail`, and both calls were the `StringBuilder` overloads - those only exist from API 34 on,
+  while `minSdk` is 32, so on Android 12L and 13 the app threw `NoSuchMethodError` the moment it read
+  a log file. It is an `Error`, so the surrounding `catch (IOException)` never saw it. The
+  `StringBuffer` overloads have existed since the first API level and do the same job here. The call
+  has been in the tree since `b6b7d4d`, which is in 1.16, so this one is in a released build.
+
+## 1.17
+
+Based on upstream DFRoot 4.6 - 4.7 (upstream 4.6 - 4.7 merged into this fork). `versionCode` 34, `versionName` 1.17.
+
+### Engine - the instruction patch stopped guessing prologues
+- `patch_fn_ret_zero()` no longer decodes a `BTI`/`PACIASP`/`PACIBSP` preamble to find where the
+  prologue ends, and no longer chooses `retaa`/`retab` per SoC. It writes three words - `BTI C`,
+  `MOV x0, #0`, `RET` - at the function entry. `BTI C` is a legal landing pad and a plain NOP where
+  BTI is not enforced, and the bare `RET` is correct because the whole prologue is replaced rather
+  than branched into, so a return is never reached through an authenticated path. This removes the
+  per-vendor guessing that 1.16's preamble walk was.
+- `bootstrap.c` lost its `fork()` child that rewrote `/proc/self/attr/current` to `u:r:init:s0`. The
+  kernel module now sets the context at exec time with
+  `echo -n 'u:r:init:s0' > /proc/self/attr/exec` inside the `call_usermodehelper_exec` command line,
+  so the label applies to the execed image and there is no child process to wait for.
+
+### Engine - SELinux on kernels that cannot be made permissive
+- Writing `selinux_state` to false does nothing on a kernel built with
+  `CONFIG_SECURITY_SELINUX_DEVELOP=n`, so the module now reads `selinux_state` back and, when it is
+  still true, patches `avc_has_perm` and `avc_has_perm_noaudit` to return 0 instead - both of them,
+  because most denials surface through the noaudit path first (upstream #172).
+
+### Engine - other upstream fixes
+- `persist.log.tag` starting with `S` means Developer Options "Log buffer size" is Off, which leaves
+  the exploit unable to read back its own logcat output. ExploitRunner now says so up front and asks
+  for another value, instead of failing later with an unexplained timeout (upstream #173).
+- Upstream "Fix kernel compatibility" and "Fix oppo devices" (0fed9a8, 452191a) come along with the
+  merge.
+
+### Licensing
+- The repository now carries the GPL-2.0 `LICENSE` file upstream added in 4ec133c, as the upstream
+  maintainer requested. Until now this fork had no licence at all. Everything under GPLv2 from this
+  release on; note that means GPL-3-only code cannot be copied in, so the D2 work below is written
+  against the documented record format rather than lifted from GPL-3 projects.
+
+### Build
+- `build-lkms` no longer runs a second `llvm-objcopy` pass over the module. `lkm/Makefile` owns the
+  section diet, and that list deliberately keeps `.note.gnu.build-id`. The extra pass in the workflow
+  was stripping it, so the modules CI embedded in 1.15 and 1.16 had no build-id even though 1.16's
+  notes claimed they did - the tracked `app/src/main/jni/ko/*.ko` confirm it (`readelf -S` shows no
+  such section). That is a loading regression on the Galaxy A34 the section was kept for, and this is
+  what fixes it. It also makes CI output match, byte for byte, what the root Makefile produces in the
+  same DDK image.
+- `lkm/Makefile` defaults `OBJCOPY ?= llvm-objcopy`. Upstream's diet recipe is written as `$(OBJCOPY)`
+  with no definition in the tree and relies on the DDK image exporting it; a missing value would make
+  the recipe expand to nothing and silently skip the diet.
+
+### Before the tag is cut
+- The eight tracked `app/src/main/jni/ko/dfroot-<KMI>.ko` are still the ones built from the 1.16 tree.
+  Rebuilding them needs the `ghcr.io/ylarod/ddk-min` containers, which this machine cannot run (no
+  container runtime). CI rebuilds all eight from source on every push and downloads them into
+  `app/src/main/jni/ko/` before assembling the APK, so published builds are current; refresh the
+  tracked copies from the `build-lkms` artifacts before tagging, the way `d9c8861` did for 1.16.
+
 ## 1.16
 
 Based on upstream DFRoot 4.5 (upstream 4.2 - 4.5 merged into this fork).

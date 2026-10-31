@@ -10,8 +10,8 @@ android {
         applicationId = "df.root"
         minSdk = 32
         targetSdk = 37
-        versionCode = 33
-        versionName = "1.16"
+        versionCode = 34
+        versionName = "1.17"
 
         ndk {
             abiFilters += listOf("arm64-v8a")
@@ -60,7 +60,9 @@ androidComponents {
     }
 
     buildFeatures {
-        viewBinding = true
+        // No viewbinding: df.root.ActivityMainBinding is written by hand, which keeps
+        // every binding.<id> call site and drops androidx.databinding:viewbinding.
+        viewBinding = false
         // The toolbar version pill reads BuildConfig.VERSION_NAME, so the pill
         // can never fall behind versionName again.
         buildConfig = true
@@ -80,7 +82,9 @@ androidComponents {
 }
 
 dependencies {
-    implementation(libs.androidx.appcompat)
-    implementation(libs.material)
-    implementation(libs.androidx.constraintlayout)
+    // Deliberately empty. The whole UI is framework widgets plus the custom views in
+    // df.root (CardStackLayout, DraggableCardView, PillButton, OneUiSwitch,
+    // TwoStepProgressView, BottomFadeView). appcompat, material, constraintlayout and
+    // viewbinding used to sit here and pulled 40 androidx/material artifacts into the
+    // APK; the replacements are documented under "Unreleased" in CHANGELOG.md.
 }

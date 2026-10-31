@@ -1,102 +1,71 @@
 <resources>
-    <style name="Theme.DirtyFrag" parent="Theme.Material3.DynamicColors.DayNight.NoActionBar">
+    <!-- Framework Material, dark, no action bar. There is no
+         Theme.Material3.DynamicColors parent here any more, and that is the whole point:
+         the wallpaper palette used to leak into every attribute this theme left unset -
+         that was the purple flash on cold start. Now nothing can leak, because there is
+         no palette-aware theme underneath; what is written down is what draws.
+         It is dark rather than DayNight: every surface and every on* colour was pinned to
+         the dark ramp anyway, so the DayNight parent only ever risked a light frame. -->
+    <style name="Theme.DirtyFrag" parent="@android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">@font/inter</item>
-        <item name="fontFamily">@font/inter</item>
         <item name="android:windowBackground">@color/black</item>
         <item name="android:statusBarColor">@color/black</item>
         <item name="android:navigationBarColor">@color/black</item>
-        <item name="colorSurface">@color/black</item>
-        <item name="colorSurfaceContainerLow">@color/black</item>
-        <item name="colorSurfaceContainer">@color/black</item>
-        <item name="colorSurfaceContainerHigh">@color/black</item>
-        <item name="colorSurfaceContainerHighest">@color/black</item>
-        <item name="colorOutline">#FFE8E8E8</item>
-        <!-- Every press highlight in the app: 30% mid-grey, never white.
-             Covers the Material Run pill and anything else that pulls the
-             ripple from the theme; the explicit ripple drawables use the
-             same #4D6E6E6E. -->
-        <item name="colorControlHighlight">#4D6E6E6E</item>
-        <!-- NO PURPLE, NOT EVEN FOR A FRAME. The Material3 DynamicColors parent
-             pulls the wallpaper palette, and every attribute we leave unset
-             (starting window, system splash, selection highlight, switch
-             accent) comes back tinted - that was the purple flash for a moment
-             on cold start. Pin the surfaces and accents to neutral grey.
-             android:colorBackground is the one the starting window and the
-             splash fall back to, so it is the important line here. -->
+        <!-- android:colorBackground is what the starting window and the splash fall back
+             to, so it is the important line here. -->
         <item name="android:colorBackground">@color/black</item>
-        <item name="colorPrimary">#FFB0B0B0</item>
-        <item name="colorOnPrimary">#FF141414</item>
-        <item name="colorPrimaryContainer">#FF2E2E2E</item>
-        <item name="colorOnPrimaryContainer">#FFE0E0E0</item>
-        <item name="colorSecondary">#FFB0B0B0</item>
-        <item name="colorOnSecondary">#FF141414</item>
-        <item name="colorSecondaryContainer">#FF2E2E2E</item>
-        <item name="colorOnSecondaryContainer">#FFE0E0E0</item>
-        <item name="colorTertiary">#FFB0B0B0</item>
-        <item name="colorOnTertiary">#FF141414</item>
-        <item name="colorTertiaryContainer">#FF2E2E2E</item>
-        <item name="colorOnTertiaryContainer">#FFE0E0E0</item>
-        <item name="colorSurfaceVariant">#FF2E2E2E</item>
-        <item name="colorSurfaceDim">#FF141414</item>
-        <item name="colorSurfaceBright">#FF2E2E2E</item>
-        <item name="colorSurfaceContainerLowest">#FF000000</item>
-        <item name="colorOutlineVariant">#FF3A3A3A</item>
-        <item name="colorOnBackground">#FFE0E0E0</item>
-        <item name="colorOnSurface">#FFE0E0E0</item>
-        <item name="colorOnSurfaceVariant">#FFCAC4C4</item>
-        <item name="colorControlActivated">#FFC9C9C9</item>
-        <item name="colorAccent">#FFC9C9C9</item>
+        <!-- Every press highlight in the app: 30% mid-grey, never white. PillButton draws
+             its own ripple in the same #4D6E6E6E, as do the explicit ripple drawables. -->
+        <item name="android:colorControlHighlight">#4D6E6E6E</item>
         <item name="android:colorAccent">#FFC9C9C9</item>
+        <item name="android:colorControlActivated">#FFC9C9C9</item>
+        <item name="android:colorPrimary">#FFB0B0B0</item>
+        <item name="android:colorPrimaryDark">@color/black</item>
         <item name="android:textColorHighlight">#4D6E6E6E</item>
         <!-- System splash screen. minSdk is 32, so these live here and NOT in a
              values-v31 copy: that copy used to redefine this whole theme, which
              silently overrode everything else on every supported device.
              Background is BLACK, not transparent - a transparent splash lets
-             OneUI fall back to its own (purple-tinted) surface. The animated
-             icon is a transparent colour so no icon is shown at all. -->
+             OneUI fall back to its own surface. The animated icon is a transparent
+             colour so no icon is shown at all. -->
         <item name="android:windowSplashScreenBackground">@color/black</item>
         <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
         <!-- Card-styled popup menu (rounded #1C1C1C background). -->
-        <item name="popupMenuStyle">@style/DF_PopupMenu</item>
         <item name="android:popupMenuStyle">@style/DF_PopupMenu</item>
-        <item name="actionOverflowMenuStyle">@style/DF_OverflowMenu</item>
+        <item name="android:actionOverflowMenuStyle">@style/DF_OverflowMenu</item>
         <!-- Must live on the theme (not the popup style): the popup's ListView
              reads this attr from the activity theme. Provides the centered
              divider between menu items. -->
-        <item name="dropDownListViewStyle">@style/DF_DropDownListView</item>
+        <item name="android:dropDownListViewStyle">@style/DF_DropDownListView</item>
         <item name="android:itemTextAppearance">@style/DF_MenuText</item>
-        <item name="textAppearanceListItemSmall">@style/DF_MenuText</item>
+        <item name="android:textAppearanceListItemSmall">@style/DF_MenuText</item>
         <!-- Popup sizing: taller rows, narrower side padding. -->
-        <item name="listPreferredItemHeightSmall">56dp</item>
-        <item name="listPreferredItemPaddingLeft">12dp</item>
-        <item name="listPreferredItemPaddingRight">12dp</item>
+        <item name="android:listPreferredItemHeightSmall">56dp</item>
+        <item name="android:listPreferredItemPaddingLeft">12dp</item>
+        <item name="android:listPreferredItemPaddingRight">12dp</item>
     </style>
-    <style name="DF_MenuText" parent="TextAppearance.AppCompat">
+    <style name="DF_MenuText" parent="@android:style/TextAppearance.Material">
         <item name="android:textSize">15sp</item>
         <item name="android:textColor">#FFE8E8E8</item>
         <item name="android:gravity">center</item>
     </style>
-    <style name="ShapeCircle">
-        <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">50%</item>
-    </style>
-    <style name="DF_PopupMenu" parent="Widget.Material3.PopupMenu">
+    <style name="DF_PopupMenu" parent="@android:style/Widget.Material.PopupMenu">
         <item name="android:popupBackground">@drawable/popup_bg</item>
         <item name="android:popupElevation">24dp</item>
     </style>
-    <style name="DF_OverflowMenu" parent="Widget.Material3.PopupMenu.Overflow">
+    <style name="DF_OverflowMenu" parent="@android:style/Widget.Material.PopupMenu.Overflow">
         <item name="android:popupBackground">@drawable/popup_bg</item>
         <item name="android:popupElevation">24dp</item>
     </style>
-    <style name="DF_DropDownListView" parent="Widget.AppCompat.ListView.DropDown">
+    <style name="DF_DropDownListView" parent="@android:style/Widget.Material.ListView">
         <item name="android:divider">@drawable/menu_divider</item>
         <item name="android:dividerHeight">1dp</item>
         <item name="android:listSelector">@drawable/menu_item_ripple</item>
     </style>
-    <!-- OneUI-style bold toolbar title -->
-    <style name="ToolbarTitle" parent="TextAppearance.Material3.TitleLarge">
+    <!-- OneUI-style bold toolbar title. Framework TextAppearance.Material.Title is the
+         closest parent now that TextAppearance.Material3.TitleLarge is not on screen. -->
+    <style name="ToolbarTitle" parent="@android:style/TextAppearance.Material.Title">
         <item name="android:fontFamily">@font/inter</item>
-        <item name="fontFamily">@font/inter</item>
         <item name="android:textFontWeight">700</item>
         <item name="android:textSize">24sp</item>
         <item name="android:textStyle">bold</item>

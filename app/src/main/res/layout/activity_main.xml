@@ -1,26 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
+<!-- RelativeLayout, not ConstraintLayout: the app carries no androidx at all. What the
+     constraints were doing here is anchor-based (below the app bar, along the bottom
+     edge, to the left of the Run pill), which RelativeLayout says directly. The only
+     percentage geometry was the Run pill's 26% left edge and 48% width, and
+     MainActivity already computes both in pixels (setCompactButton measures the parent),
+     so the guideline has simply moved into that code. -->
+<RelativeLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true">
 
-    <com.google.android.material.appbar.AppBarLayout
+    <FrameLayout
         android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fitsSystemWindows="true"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        android:layout_alignParentTop="true"
+        android:fitsSystemWindows="true">
 
-        <com.google.android.material.appbar.MaterialToolbar
+        <android.widget.Toolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            app:title="DirtyFrag"
-            app:titleMarginStart="32dp"
-            app:titleTextAppearance="@style/ToolbarTitle">
+            android:contentInsetStart="0dp"
+            android:contentInsetStartWithNavigation="0dp"
+            android:title="DirtyFrag"
+            android:titleMarginStart="32dp"
+            android:titleTextAppearance="@style/ToolbarTitle">
 
             <!-- OneUI-style overflow button: grey circle, right edge aligned
                  with the card toggles below (32dp from screen edge). -->
@@ -132,9 +139,9 @@
 
             </LinearLayout>
 
-        </com.google.android.material.appbar.MaterialToolbar>
+        </android.widget.Toolbar>
 
-    </com.google.android.material.appbar.AppBarLayout>
+    </FrameLayout>
 
     <!-- Invisible anchor for the popup menu: sits a bit right of and below
          the circle button, so the popup overlaps the card below. -->
@@ -144,28 +151,36 @@
         android:layout_height="2dp"
         android:layout_marginTop="0dp"
         android:layout_marginEnd="8dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/appBarLayout" />
+        android:layout_alignParentEnd="true"
+        android:layout_below="@id/appBarLayout" />
 
     <!-- Movable card stack (VIS1): the four OneUI cards live in a vertical
          CardStackLayout. A tap is just a tap; hold anywhere on a card for a beat
          and it lifts, snaps under the finger and sticks there until the finger
          is lifted. The order and any hidden card are kept in dfroot_ui prefs.
          The stack is wrap_content so the log below it still rides along with
-         whatever the cards add up to. -->
+         whatever the cards add up to.
+
+         Below the app bar, as wide as the parent, nothing else: that is all the
+         constraints here ever said. The log panel is deliberately NOT anchored to
+         this stack even though it hangs under it, because CardStackLayout owns that
+         box (VIS4) - it reserves log_window_height of room under the advanced-log
+         card and hands the panel a topMargin that drops it into that gap, measured
+         from the top of the parent. Anchoring the two against each other would make
+         the stack's height depend on where the panel ended up, which is the answer
+         the stack is still computing; unanchored, the stack measures itself in one
+         pass and the panel lands in its own. -->
     <df.root.CardStackLayout
         android:id="@+id/cardStack"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_below="@id/appBarLayout"
         android:layout_marginStart="16dp"
         android:layout_marginTop="8dp"
         android:layout_marginEnd="16dp"
         android:clipChildren="false"
         android:clipToPadding="false"
-        android:orientation="vertical"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/appBarLayout">
+        android:orientation="vertical">
 
     <!-- SU Manager picker. Upstream 3.2 removed the bundled ksud binary and
          stages it from the selected manager's nativeLibraryDir, so the exploit
@@ -183,7 +198,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:background="@drawable/menu_row_highlight"
+            android:background="@drawable/card_row_ripple"
             android:clickable="true"
             android:focusable="true"
             android:paddingStart="16dp"
@@ -460,13 +475,11 @@
          same frame. -->
     <FrameLayout
         android:id="@+id/logWindow"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="@dimen/log_window_height"
         android:layout_marginStart="32dp"
         android:layout_marginEnd="32dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        android:layout_alignParentTop="true">
 
         <ScrollView
             android:id="@+id/outputScroll"
@@ -502,29 +515,24 @@
     <!-- OneUI-update-style two-step progress bar -->
     <df.root.TwoStepProgressView
         android:id="@+id/twoStep"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="32dp"
         android:layout_marginEnd="32dp"
         android:layout_marginBottom="6dp"
-        app:layout_constraintBottom_toTopOf="@+id/btnRun"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        android:layout_above="@+id/btnRun" />
 
-    <!-- Left-edge anchor for the pill: (1-0.48)/2 = 26% — the fresh pill's
-         left edge, which must never move during the shrink animation. -->
-    <androidx.constraintlayout.widget.Guideline
-        android:id="@+id/glPillStart"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        app:layout_constraintGuide_percent="0.26" />
-
-    <!-- OneUI search-bar style floating pill -->
-    <Button
+    <!-- OneUI search-bar style floating pill. Its left edge sits at 26% of the parent and
+         it is 48% wide, which is what the vertical guideline used to say; both numbers are
+         already computed in pixels in MainActivity (setCompactButton measures the parent),
+         so applyRunPillGeometry() sets leftMargin and width in code. wrap_content is only
+         the fall-back for the frame before that runs. -->
+    <df.root.PillButton
         android:id="@+id/btnRun"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="54dp"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentBottom="true"
         android:layout_marginBottom="28dp"
         android:insetTop="0dp"
         android:insetBottom="0dp"
@@ -536,11 +544,6 @@
         android:textSize="14sp"
         android:backgroundTint="#FF7A7A7A"
         android:textColor="#FFE0E0E0"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0"
-        app:layout_constraintStart_toStartOf="@+id/glPillStart"
-        app:layout_constraintWidth_percent="0.48"
         app:strokeWidth="0.5dp"
         app:strokeColor="#FFA6A6A6" />
 
@@ -557,6 +560,8 @@
         android:id="@+id/btnKsu"
         android:layout_width="54dp"
         android:layout_height="54dp"
+        android:layout_toEndOf="@id/btnRun"
+        android:layout_alignParentBottom="true"
         android:layout_marginStart="12dp"
         android:layout_marginBottom="28dp"
         android:background="@drawable/bg_pill"
@@ -566,11 +571,7 @@
         android:elevation="12dp"
         android:enabled="false"
         android:focusable="true"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0"
-        app:layout_constraintStart_toEndOf="@+id/btnRun">
+        android:visibility="gone">
 
         <!-- Fades in while the circle opens up; dark ink on the lit pill.
              Centered in the space left of the chevron (marginEnd clears the
@@ -604,13 +605,25 @@
          (#1F1F1F, like the Rooted pill / unlit KSU circle) with the glyph in
          #6E6E6E — the exact colour of the "Rooted" text. padding 0 + center
          scaleType keep the glyph dead-centre. Hidden until a run has finished;
-         MainActivity.setShareButtonVisible pops it in like btnKsu. -->
+         MainActivity.setShareButtonVisible pops it in like btnKsu.
+
+         It is pinned to the parent's start rather than to the Run pill: the
+         pill's left edge is not a layout rule at all, it is a leftMargin that
+         applyRunPillGeometry() puts in at runtime, and RelativeLayout resolves
+         a layout_toStartOf anchor against the pill's own rule (alignParentStart,
+         i.e. x=0) instead of against that margin. Measured on device: the circle
+         came out at x = -186..-34 - visible, enabled, clickable, entirely off
+         the left edge of the screen, which is why the share button looked like
+         it had vanished. layout_marginStart is the fall-back for the frame
+         before applyRunPillGeometry() has run (26% inset - 12dp gap - 54dp
+         circle = 33.4dp); the code sets the exact px every time the pill moves. -->
     <ImageButton
         android:id="@+id/btnShareLog"
         android:layout_width="54dp"
         android:layout_height="54dp"
-        android:layout_marginEnd="12dp"
-        android:layout_marginBottom="28dp"
+        android:layout_alignParentStart="true"
+        android:layout_alignBottom="@id/btnRun"
+        android:layout_marginStart="33dp"
         android:background="@drawable/bg_circle_grey_ripple"
         android:contentDescription="Save log to Downloads"
         android:elevation="12dp"
@@ -618,24 +631,22 @@
         android:scaleType="center"
         android:src="@drawable/ic_share"
         android:tint="#FF6E6E6E"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/btnRun"
-        app:layout_constraintHorizontal_bias="1"
-        app:layout_constraintStart_toStartOf="parent" />
+        android:visibility="gone" />
 
-    <!-- Dim overlay: darkens the app 50% while the submenu is visible. -->
+    <!-- Dim overlay: darkens the app 50% while the submenu is visible. Declared last on
+         purpose: RelativeLayout draws children in declaration order and the cards are
+         declared earlier, so this lands above them. It is still positioned in RelativeLayout's
+         first pass, because no child here references it by id - a child that referenced a
+         later sibling would be deferred to the second pass, and would then be placed (and
+         drawn) after it. -->
     <View
         android:id="@+id/dimOverlay"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_alignParentTop="true"
         android:background="@color/black"
         android:elevation="30dp"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:visibility="gone" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</RelativeLayout>
  

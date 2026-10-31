@@ -62,12 +62,6 @@ $(LKM_KOS): $(LKM_SRCS)
 	        bash -c 'set -e; \
 	            cd /proj/lkm; \
 	            make -j$$(nproc); \
-	            llvm-objcopy --strip-unneeded \
-	              -R .comment -R .note.gnu.property \
-	              -R .note.Linux -R .note.GNU-stack \
-	              -R .BTF -R .BTF.base -R .llvm_addrsig \
-	              -R .hyp.text -R .hyp.bss -R .hyp.rodata -R .hyp.event_ids \
-	              -R .hyp.patchable_function_entries -R .hyp.data dfroot.ko; \
 	            mkdir -p /proj/app/src/main/jni/ko; \
 	            cp dfroot.ko /proj/app/src/main/jni/ko/dfroot-$$KMI.ko; \
 	            make clean; \
