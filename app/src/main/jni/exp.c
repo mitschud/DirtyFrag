@@ -13,9 +13,11 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
+#include <sys/system_properties.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "aes256.h"
+#include "ko_select.h"
 
 #define eos(s) (s + strlen(s))
 
@@ -268,68 +270,64 @@ asm(
     "splice_helper_start:\n.incbin \"splicehelper\"\nsplice_helper_end:\n"
 );
 
-extern char dfroot_ko_12_5_10_start[], dfroot_ko_12_5_10_end[];
-extern char dfroot_ko_13_5_10_start[], dfroot_ko_13_5_10_end[];
-extern char dfroot_ko_13_5_15_start[], dfroot_ko_13_5_15_end[];
-extern char dfroot_ko_14_5_15_start[], dfroot_ko_14_5_15_end[];
-extern char dfroot_ko_14_6_1_start[],  dfroot_ko_14_6_1_end[];
-extern char dfroot_ko_15_6_6_start[],  dfroot_ko_15_6_6_end[];
-extern char dfroot_ko_16_6_12_start[], dfroot_ko_16_6_12_end[];
-extern char dfroot_ko_17_6_18_start[], dfroot_ko_17_6_18_end[];
 extern char splice_helper_start[], splice_helper_end[];
 
-struct KoImage { int android_release, kver_major, kver_minor; const char *start, *end; };
 
-static const struct KoImage *select_ko_image(int andr, int major, int minor) {
-    static const struct KoImage imgs[] = {
-        {12, 5, 10, dfroot_ko_12_5_10_start, dfroot_ko_12_5_10_end},
-        {13, 5, 10, dfroot_ko_13_5_10_start, dfroot_ko_13_5_10_end},
-        {13, 5, 15, dfroot_ko_13_5_15_start, dfroot_ko_13_5_15_end},
-        {14, 5, 15, dfroot_ko_14_5_15_start, dfroot_ko_14_5_15_end},
-        {14, 6,  1, dfroot_ko_14_6_1_start,  dfroot_ko_14_6_1_end},
-        {15, 6,  6, dfroot_ko_15_6_6_start,  dfroot_ko_15_6_6_end},
-        {16, 6, 12, dfroot_ko_16_6_12_start, dfroot_ko_16_6_12_end},
-        {17, 6, 18, dfroot_ko_17_6_18_start, dfroot_ko_17_6_18_end},
-    };
-    const struct KoImage *fb = NULL;
-    for (size_t i = 0; i < sizeof(imgs)/sizeof(imgs[0]); i++) {
-        if (imgs[i].kver_major != major || imgs[i].kver_minor != minor) continue;
-        if (imgs[i].android_release == andr) return &imgs[i];
-        if (!fb) fb = &imgs[i];
-    }
-    return fb;
-}
-
-static int read_device_versions(int *andr, int *major, int *minor) {
+/*
+ * What the module table is keyed on is the kernel's GKI level - the "androidNN"
+ * token in uname -r - not the Android version the user sees. uname is the only
+ * authoritative source for it, so it is read first and properties are strictly a
+ * fallback for the vendor kernels that drop the token (Oppo among them).
+ *
+ * Issue 73 asks for ro.build.version.release in that fallback, and it is the
+ * right answer to a different question. On the SM-S931B these rows were checked
+ * against it reads 17 while the phone boots an android15-6.6 kernel, so feeding
+ * 17 in would point at android17-6.18 on a 6.6 device. The vendor key reads 15
+ * there, because vendor and boot images move together and the kernel follows
+ * them: the vendor-side number is the one that tracks the GKI level. Both are
+ * read, the vendor one wins when it is usable, and both are printed - a device
+ * that has to be guessed at should at least say what the guess was built from.
+ */
+static int read_device_versions(int *kmi, int *major, int *minor) {
     struct utsname u;
+    char vendor[PROP_VALUE_MAX] = { 0 }, system_release[PROP_VALUE_MAX] = { 0 };
+    int v = 0, s = 0;
+
     if (uname(&u) != 0) return -1;
     if (sscanf(u.release, "%d.%d", major, minor) != 2) return -1;
+
     const char *m = strstr(u.release, "android");
-    if (!m) {
-        /* Some vendor kernels drop the "androidNN" token from uname -r, which
-         * leaves nothing to parse here. ro.vendor.build.version.release carries
-         * the same number, so fall back to it - but the popen is untrusted: it
-         * can fail outright, and the property is neither guaranteed numeric nor
-         * short, so nothing is built until a leading integer has actually been
-         * read out of it. */
-        printf("uname -r is missing Android version, trying getprop\n");
-        char vendor_ver[16] = { 0 };
-        FILE *f = popen("getprop ro.vendor.build.version.release", "r");
-        if (f) {
-            if (!fgets(vendor_ver, sizeof(vendor_ver), f))
-                vendor_ver[0] = '\0';
-            pclose(f);
-        }
-        int prop = 0;
-        if (sscanf(vendor_ver, "%d", &prop) != 1 || prop <= 0) {
-            printf("getprop returned no usable Android version\n");
-            return -1;
-        }
-        *andr = prop;
-        return 0;
+    if (m) {
+        *kmi = atoi(m + strlen("android"));
+        return (*kmi > 0) ? 0 : -1;
     }
-    *andr = atoi(m + strlen("android"));
-    return (*andr > 0) ? 0 : -1;
+
+    /*
+     * No token to parse, so the GKI level has to be inferred. Neither property is
+     * guaranteed set, numeric or short, so nothing is accepted until a leading
+     * integer has actually been read out of it, and __system_property_get is used
+     * rather than popen("getprop ...") - there is no reason to fork /system/bin/sh
+     * in the middle of the patch sequence to read two constants.
+     */
+    printf("uname -r is missing the Android version, trying system properties\n");
+    __system_property_get("ro.vendor.build.version.release", vendor);
+    __system_property_get("ro.build.version.release", system_release);
+
+    if (sscanf(vendor, "%d", &v) != 1 || v <= 0) v = 0;
+    if (sscanf(system_release, "%d", &s) != 1 || s <= 0) s = 0;
+
+    printf("  ro.vendor.build.version.release = %s\n", vendor[0] ? vendor : "<unset>");
+    printf("  ro.build.version.release        = %s\n",
+           system_release[0] ? system_release : "<unset>");
+
+    if (!v && !s) {
+        printf("neither property gave a usable Android version\n");
+        return -1;
+    }
+    *kmi = v ? v : s;
+    if (v && s && v != s)
+        printf("  vendor and system releases disagree, using vendor %d over system %d\n", v, s);
+    return 0;
 }
 
 /* Pad payload to a multiple of 16 bytes in a heap buffer. Caller must free(). */
@@ -368,16 +366,22 @@ static int patch_helper(void) {
 }
 
 static int patch_ko(void) {
-    int andr = 0, major = 0, minor = 0;
-    if (read_device_versions(&andr, &major, &minor) != 0) {
+    int kmi = 0, major = 0, minor = 0, candidates = 0, exact = 0;
+    if (read_device_versions(&kmi, &major, &minor) != 0) {
         printf("Can't parse kernel version - Non-GKI device? (unsupported)\n"); return 1;
     }
-    const struct KoImage *ko = select_ko_image(andr, major, minor);
+    const struct KoImage *ko = select_ko_image(kmi, major, minor, &candidates, &exact);
     if (!ko) {
-        printf("Unsupported kernel %d.%d android %d\n", major, minor, andr); return 1;
+        printf("Unsupported kernel %d.%d android %d - no embedded module for it\n",
+                 major, minor, kmi); return 1;
     }
+    if (!exact)
+        printf("android%d is not a module for kernel %d.%d (%d candidate%s) - "
+               "taking the nearest one\n",
+               kmi, major, minor, candidates, candidates == 1 ? "" : "s");
+    printf("Kernel %d.%d android%d -> ", major, minor, kmi);
     printf("Using KMI: android%d-%d.%d\n",
-             ko->android_release, ko->kver_major, ko->kver_minor);
+             ko->kmi, ko->kver_major, ko->kver_minor);
 
     size_t len;
     char *buf = pad16(ko->start, (size_t)(ko->end - ko->start), &len);

@@ -14,6 +14,21 @@ permissions:
   contents: write
 
 jobs:
+  # The LKM selection rules are pure logic, and they live in a header precisely so
+  # they can be run here: exp.c itself only compiles against the NDK, so without
+  # this split the table and its matching rules would ship untested.
+  ko-select-tests:
+    name: Native selection logic tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build and run tests/ko_select_test.c
+        run: |
+          cc -std=gnu11 -Wall -Wextra -Werror -I app/src/main/jni \
+             tests/ko_select_test.c -o /tmp/ko_select_test
+          /tmp/ko_select_test
+
   build-lkms:
     name: LKMs / ${{ matrix.kmi }}
     runs-on: ubuntu-latest

@@ -85,6 +85,42 @@
   `StringBuffer` overloads have existed since the first API level and do the same job here. The call
   has been in the tree since `b6b7d4d`, which is in 1.16, so this one is in a released build.
 
+### Fixed - the Android version that picks the LKM (issue #73)
+- [Issue #73](https://github.com/mitschud/DirtyFrag/issues/73) reports that the fallback for vendor
+  kernels leaving the `androidNN` token out of `uname -r` reads the wrong number, and proposes
+  `ro.build.version.release`. The symptom is real and the proposed key answers a different question.
+  The table is keyed on the kernel's GKI level, and on current handsets the two part company: the
+  SM-S931B these rows were checked against reports `17` from `ro.build.version.release` while booting
+  an `android15-6.6` kernel. Moving the fallback to the marketing version would point a 6.6 device at
+  `android17-6.18`, and on the older pairs - where two levels share one kernel line - would hand it a
+  module built for the wrong level.
+- `read_device_versions()` reads `ro.vendor.build.version.release` and `ro.build.version.release` out
+  of the property area with `__system_property_get()` instead of forking `/system/bin/sh` to run
+  `getprop` in the middle of the patch sequence. The vendor key is the one that moves with the boot
+  images and therefore with the kernel, so it wins whenever it parses, and a disagreement prints both
+  numbers rather than picking silently - on this phone they read 15 and 17. Both are still parsed for
+  a leading integer before anything is accepted, keeping the check 1.16 added after an unchecked
+  `popen()`.
+- `select_ko_image()` used to fall back to whichever row came first in the table for that kernel pair,
+  so a 5.10 or 5.15 device silently took `android12` / `android13` whatever it claimed. It now takes
+  the nearest level by distance, ties broken downward so the guess never overshoots, and hands `exact`
+  and the candidate count back to the caller, which prints `androidNN is not a module for kernel M.m
+  (N candidates) - taking the nearest one` above the choice. A guessed module is now visible in the run
+  log instead of being implied by a KMI line. Kernels with no row are still refused, not guessed at.
+- Those rules, the blob externs and the table moved from `exp.c` into `app/src/main/jni/ko_select.h`,
+  for one reason: `exp.c` compiles only against the NDK - it is page-cache patching, raw symbol
+  offsets and `.incbin` blobs - so until now the matching rules that decide which of the eight modules
+  gets patched in had no test at all. `tests/ko_select_test.c` includes the header over stub blobs and
+  runs 17 selection cases: one per committed module, the ambiguous pairs, both issue #73 readings, a
+  level below every candidate, and two kernels that must be refused. It also asserts the table still
+  carries one row per tracked `.ko` and that no two rows share a kernel pair. CI runs it as "Native
+  selection logic tests" under `cc -Wall -Wextra -Werror`; locally the same file passes under clang
+  with ASan and UBSan.
+- Checked on the phone. The installed `libdfroot.so` is `43b3284e…` and carries no `getprop` string,
+  and a run over it logs `Kernel 6.6 android15 -> Using KMI: android15-6.6`. The rest of that log is
+  byte for byte what 1.17 logged, which is the point: this kernel states its GKI level in `uname -r`,
+  so the property fallback is never consulted and the exact match needs no guessing.
+
 ## 1.17
 
 Based on upstream DFRoot 4.6 - 4.7 (upstream 4.6 - 4.7 merged into this fork). `versionCode` 34, `versionName` 1.17.
