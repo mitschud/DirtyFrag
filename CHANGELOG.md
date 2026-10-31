@@ -2,319 +2,73 @@
 
 ## 1.17
 
-Based on upstream DFRoot 4.6 - 4.7 (upstream 4.6 - 4.7 merged into this fork). `versionCode` 34, `versionName` 1.17.
+Based on upstream DFRoot 4.6 - 4.7, merged into this fork. `versionCode` 34, `versionName` 1.17.
 
 ### D2 - the download-mode authorisation byte, read and written from the phone
-- `D2Status` sees two of the three vault bytes and used to *assume* `at_command = 0`, which is how a
-  card came to report a verdict about a device whose vault said something else. The app now asks the
-  vault itself, and the DL/Recovery row applies the bootloader's own rule to the answer: `[1, 0, 0]` is
-  refused Odin, so the row says **D2 Blocked** on exactly that triple and **Allowed** on anything else.
-- Writing byte 2 is the feature. `df.d2.Harness` - compiled into the APK, and also built as a standalone
-  jar for adb - performs exactly one read-modify-verify per call: read slot 1 of the `DMC` vault, refuse
-  any record that is not a shape it knows, flip byte 2, write back a copy of the record it read a moment
-  earlier with the other 31 bytes identical, re-read, and only then say `written`. `already-authorized`,
-  `write-failed`, `verify-failed` and `unsupported` are their own states; nothing retries blind.
-- How a normal app reaches a `signature|privileged` service, the part worth reading twice: the helper
-  process **is the installed APK**. `df-d2-launch` - 5,560 bytes in the APK as `libdf-d2-launch.so`,
-  because that is the only way AGP will package it, staged to `/data/data/df.root/df-d2-launch` (5,680
-  there, the installer keeping 16 KB alignment) the same way `ksud` and `bootstrap` are staged -
-  `execve`s `/system/bin/app_process64` with
-  `-Djava.class.path=<this app's own base.apk>` and `argv[0]` set to `system_server`; `Harness` then
-  drops itself to uid 1000 through `Os.setgid`/`Os.setuid`. Three vendor checks, three answers: the
-  service reads the caller's name out of `/proc/<pid>/cmdline`, so the name is picked at exec because
-  nothing can change it afterwards; it checks the calling uid's grants, which root does not have and the
-  platform package does; and pointing `app_process` at `base.apk` puts `framework.jar` - and with it the
-  vendor's own `VaultKeeperManager`, which the harness drives reflectively - on the boot classpath. No
-  dex, jar or APK is copied to disk, no sepolicy rule is added, and nothing is injected into
-  `system_server`.
-- The writer is one-shot, not a service. Every path through `Harness.main` ends in `System.exit`, the
-  launcher `execve`s rather than forks so no parent is left behind, and `D2Writer` is the parent that
-  reaps: stdout drained to EOF, then `waitFor` on a 20 s read / 40 s write budget with
-  `destroyForcibly()` if a su never answers. After a device run `ps -A` holds no `df-d2-launch`, no
-  `app_process` and no harness; the only file the feature leaves is that launcher in the app's own data
-  dir, rewritten on each call so an app update refreshes it rather than waiting on a reinstall.
-- R8 sees no reference to any of it - the class is entered from `argv`, not from app code - so
-  `proguard-rules.pro` keeps `df.d2.**`; without that rule the vault writer is silently shrunk out of a
-  release build. Checked in the artifact rather than assumed: the release `classes.dex` still carries
-  `Ldf/d2/Harness;`.
-- Expert Mode stays the outer gate, and a device whose firmware never gated download mode is treated as
-  having no byte to write - the card says so and no su is spent confirming it.
+- The DL/Recovery row is now read from the vault instead of assumed. The record is
+  `[lock, maintenance, at_command]`, and the row says **D2 Blocked** on exactly `[1, 0, 0]` - the one
+  triple the bootloader refuses Odin on - and **Allowed** otherwise. `Unknown` until the vault answers,
+  **Not gated here** where the firmware never gated download mode.
+- Byte 2 can be authorised or cleared from the app, behind Expert Mode. Every call is one
+  read-modify-verify: read the `DMC` vault, refuse a record whose first three bytes are not each 0 or 1,
+  change only byte 2, write it back, re-read it, and report `written` only when it stuck.
+  `already-authorized`, `write-failed`, `verify-failed` and `unsupported` stay separate outcomes, and
+  nothing retries a blind second time.
+- The writer is a one-shot process, not a daemon: a 5.5 kB launcher `execve`s `app_process64` with this
+  app's own installed `base.apk` on the classpath, and the harness drops itself to uid 1000. Nothing is
+  copied to disk, nothing is injected into `system_server`, no sepolicy rule is added, and nothing stays
+  resident - `ps -A` after a run holds none of it. Measured on the SM-S931B. Not watched end to end:
+  booting patched firmware into Odin and seeing it accepted. The full write-up, including that gap, is
+  [docs/d2-download-mode-writer.md](https://github.com/mitschud/DirtyFrag/blob/v1.17/docs/d2-download-mode-writer.md).
 
-### Autorun Writer honours its word in the running app, and the recovery reading follows root
-- The recovery card is painted from the vault, and a reboot takes both halves of that answer with it:
-  the vendor clears byte 2, and DirtyFrag's root is a page-cache patch. The want outlives both, so
-  something has to write it again - and the vault used to be read once per process start,
-  `refreshRecovery` having exactly one call site. `runExploit`'s `finally` repainted the run button
-  without re-asking, `onResume` never asked, so on a rebooted phone the card went on showing the
-  answer it had computed while no `su` existed on the path, until the app was killed. Measured on the
-  S25: `ksud start: SUCCESS` 22:52:20, `am_kill` 22:52:27, and the first `vault: not-authorized` in
-  the log belongs to the new process at 22:52:28.
-- `startRootWatch` runs while the activity is resumed. Every 2 s it compares `D2Writer.suPresent()`
-  with what it saw last - three file stats, no su call - and on a change queues one
-  `refreshRecovery`. Edge-triggered, because a change triggers a vault read through su and a root
-  manager may answer that with a prompt: polling it would be nagging the owner, one call per
-  transition is not. A successful exploit run asks immediately as well, which is the same transition
-  seen from the side that caused it.
-- The want is now honoured in the foreground too: `autorunAtRoot` writes the byte when the switch is
-  on, Expert Mode armed it, a vault is reachable, and that vault says the byte is not set. Once per
-  root (`mAutorunTried`, cleared when su leaves the path) for the same reason the switch refuses to
-  loop on a press - a refused su is a state, not a retry cue.
-- The boot path stays the one that matters, because a flash happens in the boot the write lands in,
-  but on this vendor it cannot be the only one. A fresh boot's log carries no `boot:` line from
-  `BootReceiver` and no `am_proc_start` for a broadcast, while One UI's `BRListParser` refuses boot
-  receivers for packages outside its allowlist - and an app cannot see which side of that its own
-  broadcast landed on. So the row says where the re-arm will come from: **"Autorun Writer (at
-  reroot)"** when the Autorun card has not enabled the receiver.
-- Docs: the test device is a Galaxy **S25** (SM-S931B), not an S24. The model code in every
-  measurement was always right; the marketing name next to it was not, in three lines of the design
-  note and three code comments. The note's claim that the test device carries no credential is
-  corrected as well - the vault answers `lock=1`, the gate is engaged there, and the red
-  "D2 Blocked" row is that gate.
-- That write now goes to the run log and not only to logcat: `recovery: autorun writer - this root has
-  no authorisation byte, writing it` when it starts, and the same verdict line a press prints when it
-  ends. Until now the switch wrote silently - the pill said Allowed, and the only evidence that a byte
-  had appeared without anybody pressing for it was in `logcat`.
+### Autorun Writer honours its word while the app is running
+- A reboot clears the vendor byte, and DirtyFrag's root is a page-cache patch, so with the switch on and
+  Expert Mode armed the app re-reads the vault and writes the byte again at each reroot - once per root,
+  because a refused `su` is a state and not a retry cue. The boot path stays, but on this vendor it
+  cannot be the only one.
+- A write the switch makes on its own is reported in the run log, not only in logcat.
+- The recovery reading now follows root: the card repaints when `su` appears or leaves the path, instead
+  of going on showing the answer it computed before a reboot.
 
-### UI - one verdict row, and the switches only where there is a gate to write behind
-- "Download Mode", "Recovery Mode" and "Last Check" collapsed into one row: **DL/Recovery** answers
-  "Allowed" or "D2 Blocked" out of `D2Writer.Vault.gated()`, which is the whole point of the card -
-  the bootloader weighs `[lock, maintenance, at_command]` and refuses Odin on `[1, 0, 0]`, and the
-  writer moves one byte inside that record. "Unknown" until the vault answers, "Not gated here"
-  where the firmware never gated download mode. The authorisation byte has no row of its own
-  because the writer switch's thumb *is* that byte, on the same card, and "Last Check" only ever
-  printed the harness word for the previous attempt - that word still goes to the log. The card is
-  four label/value rows and two switches now, and the 300dp width is unchanged.
-- Support state binds both switches rather than only the write. `writerLive = expertMode &&
-  shown.supported` is what `odinToggleRow` is handed, so on a device whose firmware never gates
-  download mode both are dimmed and read "(no gate)" instead of "(Expert)" - one of those says
-  *come back after arming Expert Mode*, the other says *there is nothing here to arm*, and the
-  owner should not have to guess which. The action behind them is stopped by the same reading:
-  `writeDmcFlag` refuses without spending an su grant, `refreshRecovery` no longer asks that
-  firmware for a vaultkeeper record it cannot hold, and `BootReceiver.armD2Vault` checks
-  `D2Status.read(ctx).supported` before it waits up to 30 s for a `su` - so the boot path cannot
-  honour `d2_auto` on a device with no vault to write, which is the path that runs unattended.
+### UI
+- One verdict row, **DL/Recovery**, replaces "Download Mode", "Recovery Mode" and "Last Check"; the
+  writer switch's thumb *is* the authorisation byte, so that byte has no row of its own; the recovery
+  card is two switches at one fixed width; and switches are only offered where there is a gate to write
+  behind.
+- The app carries no androidx at all, and the pill paints its own fill - which also brings the share
+  circle back on screen, where it had been laid out past the left edge.
 
-### UI - the recovery card is two switches and one fixed width
-- The two controls at the bottom of the recovery submenu are `OneUiSwitch` rows now, not a tappable
-  "On/Off" word and a hairline pill: **"Re-arm after boot"** writes `d2_auto` the moment the thumb
-  lands, and **"Recovery Writer"** is the byte itself. A row tap flips the switch at its end - the
-  row `LinearLayout` is the touch target, which turns a 46x28dp switch into a 46dp row that can be
-  hit without aiming - and Expert Mode gates it by leaving the switch `setEnabled(false)`, so the
-  refusal happens in the one place rather than in a copy of the check.
-- The writer's thumb is the measured state of the byte, and the vault's answer rather than the
-  press is what leaves it where it ends: `writeDmcFlag` hands back a reading, the switch is set
-  from `answered.ok && answered.atCommand == 1`, and a write the root manager refused slides back
-  by itself while the DL/Recovery row repaints beside it. The
-  switch is disabled for the one attempt in flight, so an unanswered `su` cannot be flipped into a
-  loop of su calls. `writeLabel()` went with the button it used to label.
-- One fixed 300dp card, not `max(box.getMeasuredWidth(), 230dp)`. The card was cut to its contents,
-  so the same card opened over a reading of "Allowed / authorized" and then over
-  "D2 Blocked / cleared" came out two widths, and the switch a finger was reaching for
-  moved sideways between opens. Both of those states measure `x 51..894` px on the test device.
-- No state change is answered at the bottom of the screen any more. The write's verdict goes to the
-  run log alone, and the firmware-that-does-not-gate path logs instead of toasting: the card the
-  press came from is still open, carries the rows the write can change, and a toast over it
-  covered the switch that gets pressed next. `Toast` is now unused in `MainActivity`.
-- `OneUiSwitch` gained `setCheckedQuiet`, which parks the thumb at the state being displayed
-  without the 160 ms slide. Opening a card that slides a switch into place is the view claiming a
-  finger moved it when the reading did.
-
-### UI - the app carries no androidx at all
-- `appcompat`, `material`, `constraintlayout` and the viewbinding plugin are out of the dependency
-  block, and with them the roughly forty androidx/material artifacts they pulled into the APK.
-  `gradle.properties` lost its `android.useAndroidX=true` line too, so nothing in the build mentions
-  the library any more: `:app:dependencies` resolves no androidx artifact and the dex carries no
-  `Landroidx/` string. AGP's built-in Kotlin support is off in the same file, because it was the only
-  thing still putting a runtime dependency - `kotlin-stdlib`, which no source file asks for - on the
-  classpath; the report now says "No dependencies" and the release APK is 271 kB.
-- `MainActivity` extends `android.app.Activity`, the app bar is a `FrameLayout` around
-  `android.widget.Toolbar`, and `Theme.DirtyFrag` parents `@android:style/Theme.Material.NoActionBar`
-  instead of a Material3 DayNight dynamic-colour theme. That parent was the one letting the wallpaper
-  palette into every attribute the theme left unset; the dark ramp it resolves to is now written out
-  line by line.
-- Four hand-written pieces replace what the libraries drew. `PillButton` is a `Button` that builds its
-  own `GradientDrawable` fill and hairline stroke inside a `RippleDrawable`, and reads the same
-  `app:strokeWidth` / `app:strokeColor` the layout writes on the Run pill. `DraggableCardView` extends
-  `FrameLayout` and reads `app:cardBackgroundColor` / `cardCornerRadius` / `strokeWidth` /
-  `strokeColor` from a `declare-styleable` of our own in `res/values/attrs.xml` - the names are the
-  Material ones on purpose, so the layout still says what it used to. `ActivityMainBinding` resolves
-  every id once at inflate, and only its import and the inflate line differ from what the plugin
-  generated.
-- `activity_main.xml` is a `RelativeLayout`. The Run pill's 26% inset and 48% width were the only
-  guideline geometry in the file, and `MainActivity` already computed both in pixels for the compact
-  animation (`PILL_INSET_FRACTION`, `pillPercent`); `applyRunPillGeometry()` is that arithmetic with
-  the parent's width handed to it, called once from `onCreate` before the first measure and then frame
-  by frame while the width animates.
-- Two anchoring bugs the translation surfaced, both fixed here: the log window was being placed twice,
-  because `CardStackLayout.setLogWindow()` already parks it with a top margin measured from the stack's
-  own bottom edge, while an XML rule anchoring the stack above the panel made the stack's height depend
-  on where the panel ended up; and the two bottom circles were anchored along the wrong side of the Run
-  pill, while their 12dp margins had always described them as flanking it.
-- Four resources nobody read went with the libraries. `res/menu/menu_main.xml` - the overflow is a
-  hand-drawn `PopupWindow` now, and nothing has inflated that menu since options menus left the app
-  in the V3.0 refactor, so its three ids were padding the resource table. `ic_play` and
-  `menu_item_bg` had outlived the layouts that used them, and the `ic_launcher_background` colour was
-  a duplicate the adaptive icon never pointed at: the icon only ever references the drawable of that
-  name, which is where that hex and its note now live. `lintDebug` reports no unused resources and
-  no errors.
-
-### UI - the pill paints its own fill, and the share circle comes back on screen
-- `PillButton` extends `TextView`, not `Button`. A framework `Button` arrives with the platform's
-  button style, and OneUI's style installs a background of its own behind the one this class builds,
-  so the pill was being painted twice. A text view has no default style, so the only background it
-  owns is the `GradientDrawable` built here; the centring, the click and the focus that `Button` gave
-  for free are now set explicitly, and `getAccessibilityClassName()` answers `Button` so TalkBack
-  still reads a button.
-- Fill and press highlight are no longer nested inside one another. A shape installed inside another
-  drawable is copied on the way in, so every later `setColor` landed on a copy nothing drew: the Run
-  pill sat at the layout's `#7A7A7A` while the code believed it had painted it `#1F1F1F`. The
-  `backgroundTint` the XML put on the view is dropped for the same reason - a `SRC_IN` tint over a
-  shape that already carries a colour replaces that colour outright, which is what flashed the pill
-  bright green mid-animation. The shape is the background, the ripple a content-less `RippleDrawable`
-  in the foreground clipped by its own rounded-rect stencil, and every fill or stroke change now
-  ends in an explicit `invalidate()`.
-- The SU-manager row inside the draggable card takes a new `card_row_ripple` in place of
-  `menu_row_highlight`. The old drawable carries an opaque `#1C1C1C` rounded rect, which is right for
-  a popup row that has to bring its own surface, but laid over the card it squared off the card's
-  26dp corners and hid the lighter fill and white outline that say the card is being held. Here the
-  white shape is only the ripple mask, so nothing paints at rest and the ripple still stops at the
-  card's own radius.
-- The share button was never hidden, it was laid out off the left edge of the screen:
-  `layout_toStartOf="@id/btnRun"` resolves against the pill's own rule (`alignParentStart`, x = 0)
-  and ignores the `leftMargin` that `applyRunPillGeometry()` writes at runtime. `dumpsys activity top`
-  put the circle at x = -186..-34 - `VISIBLE`, enabled, clickable, entirely past the edge. It is
-  pinned to `alignParentStart` with a 33dp fall-back margin, and the same method mirrors the pill on
-  every geometry change - inset, minus `round(12dp)`, minus the circle's width - which puts both gaps
-  on the same 34 px. Measured on device: circle 94-246, Rooted pill 280-612, Manager pill 646-978.
-
-### Engine - the instruction patch stopped guessing prologues
-- `patch_fn_ret_zero()` no longer decodes a `BTI`/`PACIASP`/`PACIBSP` preamble to find where the
-  prologue ends, and no longer chooses `retaa`/`retab` per SoC. It writes three words - `BTI C`,
-  `MOV x0, #0`, `RET` - at the function entry. `BTI C` is a legal landing pad and a plain NOP where
-  BTI is not enforced, and the bare `RET` is correct because the whole prologue is replaced rather
-  than branched into, so a return is never reached through an authenticated path. This removes the
-  per-vendor guessing that 1.16's preamble walk was.
-- `bootstrap.c` lost its `fork()` child that rewrote `/proc/self/attr/current` to `u:r:init:s0`. The
-  kernel module now sets the context at exec time with
-  `echo -n 'u:r:init:s0' > /proc/self/attr/exec` inside the `call_usermodehelper_exec` command line,
-  so the label applies to the execed image and there is no child process to wait for.
-
-### Engine - SELinux on kernels that cannot be made permissive
-- Writing `selinux_state` to false does nothing on a kernel built with
-  `CONFIG_SECURITY_SELINUX_DEVELOP=n`, so the module now reads `selinux_state` back and, when it is
-  still true, patches `avc_has_perm` and `avc_has_perm_noaudit` to return 0 instead - both of them,
-  because most denials surface through the noaudit path first (upstream #172).
-
-### Engine - other upstream fixes
-- `persist.log.tag` starting with `S` means Developer Options "Log buffer size" is Off, which leaves
-  the exploit unable to read back its own logcat output. ExploitRunner now says so up front and asks
-  for another value, instead of failing later with an unexplained timeout (upstream #173).
-- Upstream "Fix kernel compatibility" and "Fix oppo devices" (0fed9a8, 452191a) come along with the
-  merge.
-
-### Fix - opening a saved log crashed below Android 14
-- `readLastLog()` normalises the exploit-result header with `Matcher.appendReplacement` and
-  `appendTail`, and both calls were the `StringBuilder` overloads - those only exist from API 34 on,
-  while `minSdk` is 32, so on Android 12L and 13 the app threw `NoSuchMethodError` the moment it read
-  a log file. It is an `Error`, so the surrounding `catch (IOException)` never saw it. The
-  `StringBuffer` overloads have existed since the first API level and do the same job here. The call
-  has been in the tree since `b6b7d4d`, which is in 1.16, so this one is in a released build.
+### Engine - upstream 4.6 - 4.7
+- The instruction patch stopped guessing prologues: it writes `BTI C`, `MOV x0, #0`, `RET` at the
+  function entry instead of decoding preambles and picking `retaa`/`retab` per SoC.
+- On kernels built without `CONFIG_SECURITY_SELINUX_DEVELOP`, the module reads `selinux_state` back and
+  patches `avc_has_perm` and `avc_has_perm_noaudit` to return 0 (upstream #172).
+- A Log buffer size of Off in Developer Options is now reported up front instead of turning up later as
+  an unexplained timeout (upstream #173).
 
 ### Fixed - the Android version that picks the LKM (issue #73)
-- [Issue #73](https://github.com/mitschud/DirtyFrag/issues/73) reports that the fallback for vendor
-  kernels leaving the `androidNN` token out of `uname -r` reads the wrong number, and proposes
-  `ro.build.version.release`. The symptom is real and the proposed key answers a different question.
-  The table is keyed on the kernel's GKI level, and on current handsets the two part company: the
-  SM-S931B these rows were checked against reports `17` from `ro.build.version.release` while booting
-  an `android15-6.6` kernel. Moving the fallback to the marketing version would point a 6.6 device at
-  `android17-6.18`, and on the older pairs - where two levels share one kernel line - would hand it a
-  module built for the wrong level.
-- `read_device_versions()` reads `ro.vendor.build.version.release` and `ro.build.version.release` out
-  of the property area with `__system_property_get()` instead of forking `/system/bin/sh` to run
-  `getprop` in the middle of the patch sequence. The vendor key is the one that moves with the boot
-  images and therefore with the kernel, so it wins whenever it parses, and a disagreement prints both
-  numbers rather than picking silently - on this phone they read 15 and 17. Both are still parsed for
-  a leading integer before anything is accepted, keeping the check 1.16 added after an unchecked
-  `popen()`.
-- `select_ko_image()` used to fall back to whichever row came first in the table for that kernel pair,
-  so a 5.10 or 5.15 device silently took `android12` / `android13` whatever it claimed. It now takes
-  the nearest level by distance, ties broken downward so the guess never overshoots, and hands `exact`
-  and the candidate count back to the caller, which prints `androidNN is not a module for kernel M.m
-  (N candidates) - taking the nearest one` above the choice. A guessed module is now visible in the run
-  log instead of being implied by a KMI line. Kernels with no row are still refused, not guessed at.
-- Those rules, the blob externs and the table moved from `exp.c` into `app/src/main/jni/ko_select.h`,
-  for one reason: `exp.c` compiles only against the NDK - it is page-cache patching, raw symbol
-  offsets and `.incbin` blobs - so until now the matching rules that decide which of the eight modules
-  gets patched in had no test at all. `tests/ko_select_test.c` includes the header over stub blobs and
-  runs 17 selection cases: one per committed module, the ambiguous pairs, both issue #73 readings, a
-  level below every candidate, and two kernels that must be refused. It also asserts the table still
-  carries one row per tracked `.ko` and that no two rows share a kernel pair. CI runs it as "Native
-  selection logic tests" under `cc -Wall -Wextra -Werror`; locally the same file passes under clang
-  with ASan and UBSan.
-- Checked on the phone. The installed `libdfroot.so` is `43b3284e…` and carries no `getprop` string,
-  and a run over it logs `Kernel 6.6 android15 -> Using KMI: android15-6.6`. The rest of that log is
-  byte for byte what 1.17 logged, which is the point: this kernel states its GKI level in `uname -r`,
-  so the property fallback is never consulted and the exact match needs no guessing.
+- The kernel's GKI level picks the module, read from `uname -r` and `ro.vendor.build.version.release`
+  rather than the marketing version - which on an `android15-6.6` phone reports `17`. Where a level has
+  no exact row the nearest one is taken, ties broken downward, and the run log says which module was
+  guessed. Kernels with no row are still refused, not guessed at.
 
-### Licensing
-- The repository now carries the GPL-2.0 `LICENSE` file upstream added in 4ec133c, as the upstream
-  maintainer requested. Until now this fork had no licence at all. Everything under GPLv2 from this
-  release on; note that means GPL-3-only code cannot be copied in, so the D2 work below is written
-  against the documented record format rather than lifted from GPL-3 projects.
+### Fixed - opening a saved log crashed below Android 14
+- `readLastLog()` used `Matcher` overloads that only exist from API 34 while `minSdk` is 32, so Android
+  12L and 13 threw `NoSuchMethodError` as soon as a log file was read. The overloads that have existed
+  since the first API level do the same job.
 
-### Build
-- `build-lkms` no longer runs a second `llvm-objcopy` pass over the module. `lkm/Makefile` owns the
-  section diet, and that list deliberately keeps `.note.gnu.build-id`. The extra pass in the workflow
-  was stripping it, so the modules CI embedded in 1.15 and 1.16 had no build-id even though 1.16's
-  notes claimed they did - the tracked `app/src/main/jni/ko/*.ko` confirm it (`readelf -S` shows no
-  such section). That is a loading regression on the Galaxy A34 the section was kept for, and this is
-  what fixes it. It also makes CI output match, byte for byte, what the root Makefile produces in the
-  same DDK image.
-- `lkm/Makefile` defaults `OBJCOPY ?= llvm-objcopy`. Upstream's diet recipe is written as `$(OBJCOPY)`
-  with no definition in the tree and relies on the DDK image exporting it; a missing value would make
-  the recipe expand to nothing and silently skip the diet.
-
-### LKM - the eight tracked modules rebuilt from this tree
-- `app/src/main/jni/ko/dfroot-<KMI>.ko` are no longer the 1.16-era binaries - they were the last of them
-  in the tree. The replacements come from the `build-lkms` artifacts of the merge run, which builds them
-  from exactly the source now on master, and went into `app/src/main/jni/ko/` the way `d9c8861` did for
-  1.16. Building them here is not an option: the `ghcr.io/ylarod/ddk-min:<KMI>` images need a container
-  runtime this machine does not have, so CI is the build host and its artifacts are the faithful copies.
-- What changed in the bytes, checked per module. Every one of the eight gained `.note.gnu.build-id`; the
-  tracked copies had no such section at all, because they predate `fa7380b` dropping the workflow's second
-  `llvm-objcopy` pass. Missing build-id is what stopped 1.15 and 1.16 modules loading on the Galaxy A34,
-  so 1.17 is the first release whose committed modules are the ones that phone needs. The `avc_has_perm`
-  and `avc_has_perm_noaudit` names from the SELinux fallback above are inside them as well - the old
-  `android15-6.6` copy names neither. `vermagic` is unchanged per KMI: same DDK images, same toolchain.
-- The modules reach a phone embedded in `lib/arm64-v8a/libdfroot.so`, through the `.incbin` block in
-  `exp.c` - there is no `ko/` entry in the APK to inspect. Proving a build carries them means searching
-  the packaged `.so` for each file byte for byte, which is what was done here: an `:app:assembleRelease`
-  over the refreshed sources gave an APK whose `libdfroot.so` contains all eight at offsets `0x1480`
-  through `0x16560`, 97,280 of its 124,136 bytes.
-- Rooted for real with them, on the phone this KMI belongs to. A 1.17 build assembled over the refreshed
-  tree ran on the SM-S931B (Android 17, patch level 2026-10-05, kernel
-  `6.6.127-android15-8-p87b1ce1-abogkiS931BXXSDDZJ1-4k`) and its run log says `Using KMI: android15-6.6`
-  followed by `patch: /vendor/lib64/libbinderdebug.so <- dfroot.ko (10560 bytes)` - 10560 is the rebuilt
-  module, the 1.16 copy is 10328. `/dev/df` came up, `su` runs in `u:r:ksu:s0` with SELinux still
-  `Enforcing`, and the KernelSU manager reports working.
-- Which is also how to tell one module generation from another in the field, and worth knowing when
-  triaging a report: the module is never `insmod`-ed. It goes in as raw bytes at the `ko_target`
-  (`/vendor/lib64/libbinderdebug.so` on this phone) and the hook in `libc++.so` loads it from there, so a
-  rooted phone has no `dfroot` line in `/proc/modules` and no `/sys/module/dfroot` to read a build-id
-  from. The byte count on that `patch:` line is the marker, and it is what identifies which committed
-  `.ko` a build actually shipped.
-- Refresh recipe, kept here so the next one is not a scavenger hunt:
-  `gh run download <run> --repo mitschud/DirtyFrag --pattern 'df-lkm-*'` then
-  `cp /tmp/lkms/df-lkm-*/dfroot-*.ko app/src/main/jni/ko/`. `*.ko` is marked `binary` in `.gitattributes`,
-  so the copies survive the `text=auto eol=lf` filter.
+### LKM - all eight modules ship in the APK
+- The eight tracked `app/src/main/jni/ko/dfroot-<KMI>.ko` are rebuilt from the merged source of this
+  tree, not the 1.16-era binaries.
+- They reach a phone embedded in `lib/arm64-v8a/libdfroot.so` through the `.incbin` block in `exp.c`, so
+  there is no `ko/` entry in the APK to look at. This release's APK was checked file by file: its
+  `libdfroot.so` holds all eight byte for byte, 97,280 of its 124,568 bytes, and they are the tracked
+  copies from this tree.
 
 ### Upstream
-- Watching [chisewaguri/DFRoot](https://github.com/chisewaguri/DFRoot/tree/upstream-standalone): it drops
-  the separate bootstrap binary and the staged copy of ksud, and has the kernel module exec the selected
-  manager's own `libksud.so`, passing the package name and both switches as insmod parameters. That is
-  worth taking once it is rebased onto upstream 4.5 and lands upstream - on its own the branch re-adds the
-  `rmmod oplus_*` chain behind issue #21, and it only writes the `dfm0`/`dfm1` markers our progress bar
-  does not read.
+- Watching [chisewaguri/DFRoot](https://github.com/chisewaguri/DFRoot/tree/upstream-standalone), which
+  drops the separate bootstrap binary and has the module exec the manager's own `libksud.so`. Worth
+  taking once it is rebased onto upstream 4.5 and lands upstream.
 
 ## 1.16
 
