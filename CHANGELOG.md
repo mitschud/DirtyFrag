@@ -1,13 +1,123 @@
 # Changelog
 
-## Unreleased
+## 1.17
 
-- Watching [chisewaguri/DFRoot](https://github.com/chisewaguri/DFRoot/tree/upstream-standalone): it drops
-  the separate bootstrap binary and the staged copy of ksud, and has the kernel module exec the selected
-  manager's own `libksud.so`, passing the package name and both switches as insmod parameters. That is
-  worth taking once it is rebased onto upstream 4.5 and lands upstream - on its own the branch re-adds the
-  `rmmod oplus_*` chain behind issue #21, and it only writes the `dfm0`/`dfm1` markers our progress bar
-  does not read.
+Based on upstream DFRoot 4.6 - 4.7 (upstream 4.6 - 4.7 merged into this fork). `versionCode` 34, `versionName` 1.17.
+
+### D2 - the download-mode authorisation byte, read and written from the phone
+- `D2Status` sees two of the three vault bytes and used to *assume* `at_command = 0`, which is how a
+  card came to report a verdict about a device whose vault said something else. The app now asks the
+  vault itself, and the DL/Recovery row applies the bootloader's own rule to the answer: `[1, 0, 0]` is
+  refused Odin, so the row says **D2 Blocked** on exactly that triple and **Allowed** on anything else.
+- Writing byte 2 is the feature. `df.d2.Harness` - compiled into the APK, and also built as a standalone
+  jar for adb - performs exactly one read-modify-verify per call: read slot 1 of the `DMC` vault, refuse
+  any record that is not a shape it knows, flip byte 2, write back a copy of the record it read a moment
+  earlier with the other 31 bytes identical, re-read, and only then say `written`. `already-authorized`,
+  `write-failed`, `verify-failed` and `unsupported` are their own states; nothing retries blind.
+- How a normal app reaches a `signature|privileged` service, the part worth reading twice: the helper
+  process **is the installed APK**. `df-d2-launch` - 5,560 bytes in the APK as `libdf-d2-launch.so`,
+  because that is the only way AGP will package it, staged to `/data/data/df.root/df-d2-launch` (5,680
+  there, the installer keeping 16 KB alignment) the same way `ksud` and `bootstrap` are staged -
+  `execve`s `/system/bin/app_process64` with
+  `-Djava.class.path=<this app's own base.apk>` and `argv[0]` set to `system_server`; `Harness` then
+  drops itself to uid 1000 through `Os.setgid`/`Os.setuid`. Three vendor checks, three answers: the
+  service reads the caller's name out of `/proc/<pid>/cmdline`, so the name is picked at exec because
+  nothing can change it afterwards; it checks the calling uid's grants, which root does not have and the
+  platform package does; and pointing `app_process` at `base.apk` puts `framework.jar` - and with it the
+  vendor's own `VaultKeeperManager`, which the harness drives reflectively - on the boot classpath. No
+  dex, jar or APK is copied to disk, no sepolicy rule is added, and nothing is injected into
+  `system_server`.
+- The writer is one-shot, not a service. Every path through `Harness.main` ends in `System.exit`, the
+  launcher `execve`s rather than forks so no parent is left behind, and `D2Writer` is the parent that
+  reaps: stdout drained to EOF, then `waitFor` on a 20 s read / 40 s write budget with
+  `destroyForcibly()` if a su never answers. After a device run `ps -A` holds no `df-d2-launch`, no
+  `app_process` and no harness; the only file the feature leaves is that launcher in the app's own data
+  dir, rewritten on each call so an app update refreshes it rather than waiting on a reinstall.
+- R8 sees no reference to any of it - the class is entered from `argv`, not from app code - so
+  `proguard-rules.pro` keeps `df.d2.**`; without that rule the vault writer is silently shrunk out of a
+  release build. Checked in the artifact rather than assumed: the release `classes.dex` still carries
+  `Ldf/d2/Harness;`.
+- Expert Mode stays the outer gate, and a device whose firmware never gated download mode is treated as
+  having no byte to write - the card says so and no su is spent confirming it.
+
+### Autorun Writer honours its word in the running app, and the recovery reading follows root
+- The recovery card is painted from the vault, and a reboot takes both halves of that answer with it:
+  the vendor clears byte 2, and DirtyFrag's root is a page-cache patch. The want outlives both, so
+  something has to write it again - and the vault used to be read once per process start,
+  `refreshRecovery` having exactly one call site. `runExploit`'s `finally` repainted the run button
+  without re-asking, `onResume` never asked, so on a rebooted phone the card went on showing the
+  answer it had computed while no `su` existed on the path, until the app was killed. Measured on the
+  S25: `ksud start: SUCCESS` 22:52:20, `am_kill` 22:52:27, and the first `vault: not-authorized` in
+  the log belongs to the new process at 22:52:28.
+- `startRootWatch` runs while the activity is resumed. Every 2 s it compares `D2Writer.suPresent()`
+  with what it saw last - three file stats, no su call - and on a change queues one
+  `refreshRecovery`. Edge-triggered, because a change triggers a vault read through su and a root
+  manager may answer that with a prompt: polling it would be nagging the owner, one call per
+  transition is not. A successful exploit run asks immediately as well, which is the same transition
+  seen from the side that caused it.
+- The want is now honoured in the foreground too: `autorunAtRoot` writes the byte when the switch is
+  on, Expert Mode armed it, a vault is reachable, and that vault says the byte is not set. Once per
+  root (`mAutorunTried`, cleared when su leaves the path) for the same reason the switch refuses to
+  loop on a press - a refused su is a state, not a retry cue.
+- The boot path stays the one that matters, because a flash happens in the boot the write lands in,
+  but on this vendor it cannot be the only one. A fresh boot's log carries no `boot:` line from
+  `BootReceiver` and no `am_proc_start` for a broadcast, while One UI's `BRListParser` refuses boot
+  receivers for packages outside its allowlist - and an app cannot see which side of that its own
+  broadcast landed on. So the row says where the re-arm will come from: **"Autorun Writer (at
+  reroot)"** when the Autorun card has not enabled the receiver.
+- Docs: the test device is a Galaxy **S25** (SM-S931B), not an S24. The model code in every
+  measurement was always right; the marketing name next to it was not, in three lines of the design
+  note and three code comments. The note's claim that the test device carries no credential is
+  corrected as well - the vault answers `lock=1`, the gate is engaged there, and the red
+  "D2 Blocked" row is that gate.
+- That write now goes to the run log and not only to logcat: `recovery: autorun writer - this root has
+  no authorisation byte, writing it` when it starts, and the same verdict line a press prints when it
+  ends. Until now the switch wrote silently - the pill said Allowed, and the only evidence that a byte
+  had appeared without anybody pressing for it was in `logcat`.
+
+### UI - one verdict row, and the switches only where there is a gate to write behind
+- "Download Mode", "Recovery Mode" and "Last Check" collapsed into one row: **DL/Recovery** answers
+  "Allowed" or "D2 Blocked" out of `D2Writer.Vault.gated()`, which is the whole point of the card -
+  the bootloader weighs `[lock, maintenance, at_command]` and refuses Odin on `[1, 0, 0]`, and the
+  writer moves one byte inside that record. "Unknown" until the vault answers, "Not gated here"
+  where the firmware never gated download mode. The authorisation byte has no row of its own
+  because the writer switch's thumb *is* that byte, on the same card, and "Last Check" only ever
+  printed the harness word for the previous attempt - that word still goes to the log. The card is
+  four label/value rows and two switches now, and the 300dp width is unchanged.
+- Support state binds both switches rather than only the write. `writerLive = expertMode &&
+  shown.supported` is what `odinToggleRow` is handed, so on a device whose firmware never gates
+  download mode both are dimmed and read "(no gate)" instead of "(Expert)" - one of those says
+  *come back after arming Expert Mode*, the other says *there is nothing here to arm*, and the
+  owner should not have to guess which. The action behind them is stopped by the same reading:
+  `writeDmcFlag` refuses without spending an su grant, `refreshRecovery` no longer asks that
+  firmware for a vaultkeeper record it cannot hold, and `BootReceiver.armD2Vault` checks
+  `D2Status.read(ctx).supported` before it waits up to 30 s for a `su` - so the boot path cannot
+  honour `d2_auto` on a device with no vault to write, which is the path that runs unattended.
+
+### UI - the recovery card is two switches and one fixed width
+- The two controls at the bottom of the recovery submenu are `OneUiSwitch` rows now, not a tappable
+  "On/Off" word and a hairline pill: **"Re-arm after boot"** writes `d2_auto` the moment the thumb
+  lands, and **"Recovery Writer"** is the byte itself. A row tap flips the switch at its end - the
+  row `LinearLayout` is the touch target, which turns a 46x28dp switch into a 46dp row that can be
+  hit without aiming - and Expert Mode gates it by leaving the switch `setEnabled(false)`, so the
+  refusal happens in the one place rather than in a copy of the check.
+- The writer's thumb is the measured state of the byte, and the vault's answer rather than the
+  press is what leaves it where it ends: `writeDmcFlag` hands back a reading, the switch is set
+  from `answered.ok && answered.atCommand == 1`, and a write the root manager refused slides back
+  by itself while the DL/Recovery row repaints beside it. The
+  switch is disabled for the one attempt in flight, so an unanswered `su` cannot be flipped into a
+  loop of su calls. `writeLabel()` went with the button it used to label.
+- One fixed 300dp card, not `max(box.getMeasuredWidth(), 230dp)`. The card was cut to its contents,
+  so the same card opened over a reading of "Allowed / authorized" and then over
+  "D2 Blocked / cleared" came out two widths, and the switch a finger was reaching for
+  moved sideways between opens. Both of those states measure `x 51..894` px on the test device.
+- No state change is answered at the bottom of the screen any more. The write's verdict goes to the
+  run log alone, and the firmware-that-does-not-gate path logs instead of toasting: the card the
+  press came from is still open, carries the rows the write can change, and a toast over it
+  covered the switch that gets pressed next. `Toast` is now unused in `MainActivity`.
+- `OneUiSwitch` gained `setCheckedQuiet`, which parks the thumb at the state being displayed
+  without the 160 ms slide. Opening a card that slides a switch into place is the view claiming a
+  finger moved it when the reading did.
 
 ### UI - the app carries no androidx at all
 - `appcompat`, `material`, `constraintlayout` and the viewbinding plugin are out of the dependency
@@ -77,6 +187,31 @@
   every geometry change - inset, minus `round(12dp)`, minus the circle's width - which puts both gaps
   on the same 34 px. Measured on device: circle 94-246, Rooted pill 280-612, Manager pill 646-978.
 
+### Engine - the instruction patch stopped guessing prologues
+- `patch_fn_ret_zero()` no longer decodes a `BTI`/`PACIASP`/`PACIBSP` preamble to find where the
+  prologue ends, and no longer chooses `retaa`/`retab` per SoC. It writes three words - `BTI C`,
+  `MOV x0, #0`, `RET` - at the function entry. `BTI C` is a legal landing pad and a plain NOP where
+  BTI is not enforced, and the bare `RET` is correct because the whole prologue is replaced rather
+  than branched into, so a return is never reached through an authenticated path. This removes the
+  per-vendor guessing that 1.16's preamble walk was.
+- `bootstrap.c` lost its `fork()` child that rewrote `/proc/self/attr/current` to `u:r:init:s0`. The
+  kernel module now sets the context at exec time with
+  `echo -n 'u:r:init:s0' > /proc/self/attr/exec` inside the `call_usermodehelper_exec` command line,
+  so the label applies to the execed image and there is no child process to wait for.
+
+### Engine - SELinux on kernels that cannot be made permissive
+- Writing `selinux_state` to false does nothing on a kernel built with
+  `CONFIG_SECURITY_SELINUX_DEVELOP=n`, so the module now reads `selinux_state` back and, when it is
+  still true, patches `avc_has_perm` and `avc_has_perm_noaudit` to return 0 instead - both of them,
+  because most denials surface through the noaudit path first (upstream #172).
+
+### Engine - other upstream fixes
+- `persist.log.tag` starting with `S` means Developer Options "Log buffer size" is Off, which leaves
+  the exploit unable to read back its own logcat output. ExploitRunner now says so up front and asks
+  for another value, instead of failing later with an unexplained timeout (upstream #173).
+- Upstream "Fix kernel compatibility" and "Fix oppo devices" (0fed9a8, 452191a) come along with the
+  merge.
+
 ### Fix - opening a saved log crashed below Android 14
 - `readLastLog()` normalises the exploit-result header with `Matcher.appendReplacement` and
   `appendTail`, and both calls were the `StringBuilder` overloads - those only exist from API 34 on,
@@ -120,35 +255,6 @@
   and a run over it logs `Kernel 6.6 android15 -> Using KMI: android15-6.6`. The rest of that log is
   byte for byte what 1.17 logged, which is the point: this kernel states its GKI level in `uname -r`,
   so the property fallback is never consulted and the exact match needs no guessing.
-
-## 1.17
-
-Based on upstream DFRoot 4.6 - 4.7 (upstream 4.6 - 4.7 merged into this fork). `versionCode` 34, `versionName` 1.17.
-
-### Engine - the instruction patch stopped guessing prologues
-- `patch_fn_ret_zero()` no longer decodes a `BTI`/`PACIASP`/`PACIBSP` preamble to find where the
-  prologue ends, and no longer chooses `retaa`/`retab` per SoC. It writes three words - `BTI C`,
-  `MOV x0, #0`, `RET` - at the function entry. `BTI C` is a legal landing pad and a plain NOP where
-  BTI is not enforced, and the bare `RET` is correct because the whole prologue is replaced rather
-  than branched into, so a return is never reached through an authenticated path. This removes the
-  per-vendor guessing that 1.16's preamble walk was.
-- `bootstrap.c` lost its `fork()` child that rewrote `/proc/self/attr/current` to `u:r:init:s0`. The
-  kernel module now sets the context at exec time with
-  `echo -n 'u:r:init:s0' > /proc/self/attr/exec` inside the `call_usermodehelper_exec` command line,
-  so the label applies to the execed image and there is no child process to wait for.
-
-### Engine - SELinux on kernels that cannot be made permissive
-- Writing `selinux_state` to false does nothing on a kernel built with
-  `CONFIG_SECURITY_SELINUX_DEVELOP=n`, so the module now reads `selinux_state` back and, when it is
-  still true, patches `avc_has_perm` and `avc_has_perm_noaudit` to return 0 instead - both of them,
-  because most denials surface through the noaudit path first (upstream #172).
-
-### Engine - other upstream fixes
-- `persist.log.tag` starting with `S` means Developer Options "Log buffer size" is Off, which leaves
-  the exploit unable to read back its own logcat output. ExploitRunner now says so up front and asks
-  for another value, instead of failing later with an unexplained timeout (upstream #173).
-- Upstream "Fix kernel compatibility" and "Fix oppo devices" (0fed9a8, 452191a) come along with the
-  merge.
 
 ### Licensing
 - The repository now carries the GPL-2.0 `LICENSE` file upstream added in 4ec133c, as the upstream
@@ -202,10 +308,13 @@ Based on upstream DFRoot 4.6 - 4.7 (upstream 4.6 - 4.7 merged into this fork). `
   `cp /tmp/lkms/df-lkm-*/dfroot-*.ko app/src/main/jni/ko/`. `*.ko` is marked `binary` in `.gitattributes`,
   so the copies survive the `text=auto eol=lf` filter.
 
-### Still outstanding before the tag is cut
-- The D2 / Odin download-mode flag writer, designed in `docs/d2-download-mode-writer.md` with
-  `tools/d2-probe.sh` already committed. `versionCode` stays 34 and `versionName` stays 1.17 until that
-  lands and passes a device run; then it gets a tag.
+### Upstream
+- Watching [chisewaguri/DFRoot](https://github.com/chisewaguri/DFRoot/tree/upstream-standalone): it drops
+  the separate bootstrap binary and the staged copy of ksud, and has the kernel module exec the selected
+  manager's own `libksud.so`, passing the package name and both switches as insmod parameters. That is
+  worth taking once it is rebased onto upstream 4.5 and lands upstream - on its own the branch re-adds the
+  `rmmod oplus_*` chain behind issue #21, and it only writes the `dfm0`/`dfm1` markers our progress bar
+  does not read.
 
 ## 1.16
 
