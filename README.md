@@ -90,7 +90,7 @@ re-run a "slow" run, the daemon may still be working.
 
 **Q: How do I remove root cleanly?**
 
-A: Before unrooting, use file manager with root and delete /data/adb/KernelSU, KSUD residue (NOT ADB FOLDER ITSELF)
+A: Before unrooting, use file manager with root and delete /data/adb/ksu, ksud, module residue.
 
 ## Building
 
