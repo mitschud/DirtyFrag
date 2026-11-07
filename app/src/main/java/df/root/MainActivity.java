@@ -571,8 +571,14 @@ public class MainActivity extends Activity implements IReporter {
             }
         });
 
-        if (new File("/dev/df").exists()) {
+        // /dev/df on its own only proves the hook's mutex was won. Reading that as root is what let
+        // a boot where ksud never came up describe itself as rooted (see RootState), so the two
+        // halves are reported apart: rooted, or hooked-without-root and locked until a reboot.
+        final RootState.State bootState = RootState.state();
+        if (bootState == RootState.State.ROOTED) {
             setRootedState();
+        } else if (bootState == RootState.State.HOOKED_NO_ROOT) {
+            setHookedNoRootState();
         }
 
         // Show the log from the last run, if any. No run yet -> log hidden.
@@ -615,7 +621,7 @@ public class MainActivity extends Activity implements IReporter {
 
         // Restore the simple status for the current state: rooted device or a
         // successful last run -> 100% + Verified; failed run -> Failed.
-        boolean rootedNow = new File("/dev/df").exists();
+        boolean rootedNow = bootState == RootState.State.ROOTED;
         boolean lastSuccess = hasLastLog
                 && createDeviceProtectedStorageContext()
                         .getSharedPreferences("dfroot", MODE_PRIVATE)
@@ -627,6 +633,12 @@ public class MainActivity extends Activity implements IReporter {
             binding.twoStep.setSeg2(1f, "Verified", 0xFFFFFFFF);
         } else if (lastFailed) {
             setFailedState();
+        } else if (bootState == RootState.State.HOOKED_NO_ROOT) {
+            // Nothing at all used to be drawn on this path: a boot that was hooked without root
+            // showed an empty bar, which reads as "nothing happened" when the truth is that the
+            // patch landed and the root did not. The two segments may disagree, so they do.
+            binding.twoStep.setSeg1(1f, "100%");
+            binding.twoStep.setSeg2(1f, "No su", 0xFFE57373);
         }
 
         binding.btnRun.setOnClickListener(v -> {
@@ -689,7 +701,6 @@ public class MainActivity extends Activity implements IReporter {
         binding.btnMenu.setOnClickListener(v -> {
             v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
             float md = getResources().getDisplayMetrics().density;
-            boolean rootedMenu = new File("/dev/df").exists();
             final android.widget.PopupWindow[] pwRef = {null};
 
             android.widget.LinearLayout box = new android.widget.LinearLayout(this);
@@ -1403,17 +1414,32 @@ public class MainActivity extends Activity implements IReporter {
         updateRunButton();
     }
 
-    /** Run needs a manager selected, no failed-run lock and no existing root. */
+    /**
+     * Run needs a manager selected, no failed-run lock, and a boot that has not been hooked yet.
+     * The last clause is not a courtesy: the shellcode wins /dev/df with O_CREAT|O_EXCL (libcxx.S)
+     * and returns without running its payload on every later hit of the hook, so while that node
+     * exists a second run can only poll for progress that is never going to come. Retrying inside
+     * the same boot is out of reach by design, not by our choice - offering it would be a button
+     * that cannot do anything except cost the user the tap. See RootState.
+     */
     private boolean canRun() {
-        return suManagerPkg != null && !failedRun && !new File("/dev/df").exists();
+        return suManagerPkg != null && !failedRun && !RootState.hooked();
     }
 
     /** Single place that decides the Run pill's look and enabled state. */
     private void updateRunButton() {
         if (running) return;
-        if (new File("/dev/df").exists()) {
-            setRootedState(true);
-            return;
+        switch (RootState.state()) {
+            case ROOTED:
+                setRootedState(true);
+                return;
+            case HOOKED_NO_ROOT:
+                // Hooked without root: the pill says so and stays locked, because the one-shot mutex
+                // in the shellcode makes a retry this boot pointless rather than merely unlikely.
+                setHookedNoRootState();
+                return;
+            default:
+                break;
         }
         if (failedRun) {
             setFailedState();
@@ -2207,6 +2233,30 @@ public class MainActivity extends Activity implements IReporter {
         setCompactButton(false, false);
     }
 
+    /**
+     * The hook is in, the payload ran, and no su binary turned up. The bar is allowed to say the two
+     * stages went differently, so it does: the patch stage really did reach 100% - winning the
+     * /dev/df mutex is the proof of that - while the stage that brings root up never arrived.
+     *
+     * <p>The pill stays locked for the rest of the boot and {@code failedRun} records it: not as a
+     * penalty for a run that went wrong, but because that mutex is one-shot (see RootState), so a
+     * second run has nothing left to do but poll until it times out. Nothing here calls the device
+     * broken, either - a manager that binds su outside {@code D2Writer.SU_PATHS} reads exactly the
+     * same from here, and "reboot" is the right advice for that device too.
+     */
+    private void setHookedNoRootState() {
+        failedRun = true;
+        binding.twoStep.setFailed(false);
+        binding.twoStep.setSeg1(1f, "100%");
+        binding.twoStep.setSeg2(1f, "No su", 0xFFE57373);
+        binding.btnRun.setEnabled(false);
+        binding.btnRun.setText("Reboot");
+        binding.btnRun.setTextColor(0xFF6E6E6E);
+        binding.btnRun.setBackgroundTintList(ColorStateList.valueOf(0xFF1F1F1F));
+        binding.btnRun.setStrokeColor(ColorStateList.valueOf(0xFF1F1F1F));
+        setCompactButton(false, false);
+    }
+
     private void setRootedState(boolean rooted) {
         runArmed = false;
         // Not rooted does not mean runnable: the manager still has to be picked
@@ -2451,11 +2501,13 @@ public class MainActivity extends Activity implements IReporter {
         boolean autoSoftReboot = sp.getBoolean("auto_soft_reboot", false);
         sp.edit().putBoolean("soft_reboot", autoSoftReboot).apply();
         lastFailReason = null;
+        // 0 ok, 1 ksud/bootstrap error, 2 poll timeout or bad setup, 3 failed to patch files
+        // (see exp.c markers[]). Hoisted out of the try because the pill in the finally block has to
+        // weigh this verdict against what the boot itself can prove.
+        int rc = 2;
         try {
-            int rc = ExploitRunner.run(mDeCtx, this);
+            rc = ExploitRunner.run(mDeCtx, this);
             if (rc != 0) {
-                // 0 ok, 1 ksud/bootstrap error, 2 poll timeout or bad setup,
-                // 3 failed to patch files (see exp.c markers[]).
                 String why = lastFailReason != null ? lastFailReason
                         : rc == 1 ? "ksud nonzero exit"
                         : rc == 2 ? "check logcat & dmesg"
@@ -2468,12 +2520,23 @@ public class MainActivity extends Activity implements IReporter {
             Log.e(TAG, "exploit exception", e);
             report("\nexception: " + e + "\n");
         } finally {
+            // What the run was told (runRc) and what this boot can prove (RootState) are different
+            // evidence, and the pill has to weigh both: rc 0 is the only thing showing that ksud
+            // reported success, while /dev/df on its own shows only that the hook won its mutex.
+            final int runRc = rc;
             mMain.post(() -> {
                 running = false;
-                boolean rooted = new File("/dev/df").exists();
+                boolean rooted = runRc == 0 || RootState.state() == RootState.State.ROOTED;
                 if (rooted) {
                     setRootedState(true);
                     binding.twoStep.setSeg2(1f, "Verified", 0xFFFFFFFF);
+                } else if (RootState.hooked()) {
+                    // The hook is in and the payload ran; whatever stopped the chain sits downstream
+                    // of the mutex - which is also why the pill asks for a reboot instead of offering
+                    // a second tap that could only poll.
+                    setHookedNoRootState();
+                    report("the hook fired but no su appeared: a second run this boot cannot work,\n"
+                            + "the shellcode's mutex is already taken. Reboot to try again.\n");
                 } else {
                     setFailedState();
                     setRootedState(false);

@@ -30,6 +30,27 @@ I/O) and still aborts with `dfme1`. The fix says nothing out loud: bootstrap has
 its only voice is the dfm and dfme nodes `exp.c` polls, and a step that succeeded quietly has nothing
 to report.
 
+### "Hooked" stopped being reported as "rooted"
+`/dev/df` is not a root marker. The shellcode creates it with `O_CREAT|O_EXCL` (`libcxx.S`) as a
+one-shot mutex and returns without running its payload on every later hit of the hook, so the node
+proves the payload started and says nothing about the stages behind it - module load, bootstrap, ksud,
+the su bind - any of which can fail on a boot where the node exists. Such a boot was described as
+rooted: `ExploitRunner.run()` returned 0 the moment it saw the node, which wrote `last_run_success`,
+which put "Verified" on the two-step bar. `canRun()` blocked the same boot on the same node with no
+explanation, so the pill read as "try again" for a retry that cannot work - an unprivileged app cannot
+unlink a node in root-owned devtmpfs, and nothing in this tree unlinks it.
+
+`RootState` is now the single reader of the node and states the boot as ROOTED, HOOKED_NO_ROOT or
+NOT_HOOKED, and the UI stops collapsing the middle one into either neighbour: the bar draws patch 100%
+with root "No su" instead of an empty strip or a false Verified, the Run pill reads Reboot and stays
+locked with the reason in the log, and the verdict after a run weighs the return code from `exp.c`
+against what the boot can prove instead of trusting one of the two. `BootReceiver` says which half of
+"already hooked" it is before spending a wakelock on a payload that will not run.
+
+The reading has a floor worth naming: su presence is checked at the three bind points `D2Writer`
+already uses, so a manager that binds su somewhere else reads as HOOKED_NO_ROOT. That is why nothing
+in the wording claims the device failed, and why reboot is the right advice under either reading.
+
 ## 1.17
 
 Based on upstream DFRoot 4.6 - 4.7, merged into this fork. `versionCode` 34, `versionName` 1.17.
