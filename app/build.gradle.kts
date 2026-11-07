@@ -18,8 +18,13 @@ android {
         // dfroot-android12-5.10.ko. See the Unreleased section of CHANGELOG.md.
         minSdk = 31
         targetSdk = 37
-        versionCode = 34
-        versionName = "1.17"
+        // 1.18 / 35 while the 1.18 section of CHANGELOG.md is still Unreleased: master carries four
+        // fixes the released 1.17 does not, and the only published builds of them are the Build
+        // workflow's DFRoot artifact, so they have to be tellable apart from the installed release.
+        // The version pill, the log header ExploitRunner writes and everything else read these two
+        // lines through BuildConfig, so this is the only place the identity lives.
+        versionCode = 35
+        versionName = "1.18"
 
         ndk {
             abiFilters += listOf("arm64-v8a")

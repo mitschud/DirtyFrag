@@ -28,6 +28,15 @@ hardening) and keeps upstream's SU-manager agnostic design.
 > manager's own `libksud.so`. A manager that does not ship that library cannot give you root. The
 > older advice to install a CI / Actions build of the manager no longer applies.
 
+> [!NOTE]
+> Pre-release builds of `master` are not published to Releases. Take the **`DFRoot`** artifact of the
+> latest green [Build](https://github.com/mitschud/DirtyFrag/actions/workflows/build.yml) run: it is a
+> signed release build - the workflow restores the `KEYSTORE` secret into `app/keystore.jks` and runs
+> `assembleRelease` - and inside the artifact the APK is at
+> `app/build/outputs/apk/release/dirtyfrag.apk`. Tagged and untagged builds go through that same
+> keystore step, so a `master` build carries the released app's signing key and installs over it as an
+> update rather than a fresh install.
+
 A fresh install of DirtyFrag gets a new Android UID, so the grant in the manager has to be given
 again after every reinstall.
 

@@ -64,6 +64,21 @@ The reading has a floor worth naming: su presence is checked at the three bind p
 already uses, so a manager that binds su somewhere else reads as HOOKED_NO_ROOT. That is why nothing
 in the wording claims the device failed, and why reboot is the right advice under either reading.
 
+### Carries the 1.18 identity while the release is still open
+
+`versionCode` 35, `versionName` 1.18. The heading above stays `Unreleased` deliberately - the release is
+not declared and more is coming before it is. What had to change is how a build of this tree identifies
+itself: `master` already carries every entry in this section, and the only builds of it anyone can
+install are the `DFRoot` artifacts of the `Build` workflow, which up to now announced themselves as
+1.17 and so were tellable apart from the installed release only by their `minSdk`. The version pill,
+the `app version:` line `ExploitRunner` writes into every log and the rest of the UI all read these
+values through `BuildConfig`, so the bump in `app/build.gradle.kts` moves all of them at once.
+
+Renaming this section to `## 1.18` remains the release step, and it is load-bearing rather than
+cosmetic: the workflow scrapes release notes by matching the heading against the tag (`v1.18` ->
+`## 1.18`), which is why an unreleased section feeds the pre-release builds now and the release notes
+later without being rewritten twice.
+
 ## 1.17
 
 Based on upstream DFRoot 4.6 - 4.7, merged into this fork. `versionCode` 34, `versionName` 1.17.
