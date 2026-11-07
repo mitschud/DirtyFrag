@@ -41,6 +41,7 @@
     <string name="progress_waiting">Waiting</string>
     <string name="progress_verification">Verification</string>
     <string name="progress_verified">Verified</string>
+    <string name="progress_no_su">No su</string>
     <string name="progress_failure">Failure</string>
     <string name="progress_reboot">Reboot</string>
     <string name="progress_percent">%1$d%%</string>

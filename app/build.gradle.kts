@@ -8,10 +8,23 @@ android {
 
     defaultConfig {
         applicationId = "df.root"
-        minSdk = 32
+        // 31, not upstream's 32. The 32 came from upstream's initial commit and nothing here needs
+        // it: nothing in the app calls an API above 31 (IpSecManager/UdpEncapsulationSocket are 28,
+        // the device-protected storage context is 24, the two splash-screen theme attributes are 31,
+        // and the log normaliser uses the Matcher overloads carried since the first API level - the
+        // API 34 ones threw NoSuchMethodError below Android 14). So 12L-only was pure loss: it kept
+        // every Android 12 phone out at install time for no reason.
+        // This widens who can INSTALL, not who can root - the module table still bottoms out at
+        // dfroot-android12-5.10.ko. See the Unreleased section of CHANGELOG.md.
+        minSdk = 31
         targetSdk = 37
-        versionCode = 34
-        versionName = "1.17"
+        // 1.18 / 35 while the 1.18 section of CHANGELOG.md is still Unreleased: master carries four
+        // fixes the released 1.17 does not, and the only published builds of them are the Build
+        // workflow's DFRoot artifact, so they have to be tellable apart from the installed release.
+        // The version pill, the log header ExploitRunner writes and everything else read these two
+        // lines through BuildConfig, so this is the only place the identity lives.
+        versionCode = 35
+        versionName = "1.18"
 
         ndk {
             abiFilters += listOf("arm64-v8a")

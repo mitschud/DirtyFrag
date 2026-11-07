@@ -9,8 +9,6 @@ import android.content.pm.PackageManager;
 import android.os.PowerManager;
 import android.util.Log;
 
-import java.io.File;
-
 /**
  * Auto-root on boot. Safety rules learned in the field:
  *  - A failed run disables the receiver; the user re-enables it in the app.
@@ -33,8 +31,15 @@ public class BootReceiver extends BroadcastReceiver implements IReporter {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        if (new File("/dev/df").exists()) {
-            Log.i(TAG, "boot: already hooked, skipping");
+        // Nothing can take the shellcode's /dev/df mutex a second time (see RootState), so a run
+        // started here would only hold a wakelock while it polls nodes that cannot move. Saying
+        // "already hooked, skipping" hides the one case a user needs in logcat: a boot that was
+        // hooked and never got a root.
+        if (RootState.hooked()) {
+            Log.i(TAG, "boot: /dev/df present, "
+                    + (D2Writer.suPresent() ? "su present - already rooted this boot"
+                                           : "no su appeared - hooked this boot without root")
+                    + "; skipping, the hook cannot run twice in one boot");
             return;
         }
         Log.i(TAG, "boot: " + intent.getAction());

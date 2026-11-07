@@ -1,5 +1,84 @@
 # Changelog
 
+## Unreleased
+
+### Android 12 can install: `minSdk` 32 -> 31
+The floor of 32 came down with upstream's initial commit rather than from anything this fork needs, and
+nothing in the app calls an API above 31 - so it kept every Android 12 phone out at install time for no
+reason. `IpSecManager` and `UdpEncapsulationSocket` are API 28, the device-protected storage context the
+bootstrap reads is 24, and both splash-screen theme attributes arrived in API 31. The only place the old
+floor had actually been load-bearing was `readLastLog()`, which 1.17 moved off the API 34 `Matcher`
+overloads onto the ones carried since the first API level.
+
+Widening who can *install* is not the same as widening who can root, and this is where the honest limit
+sits. The embedded module table still bottoms out at `dfroot-android12-5.10.ko`, and that token is the
+kernel's GKI level, not the Android version the user sees: an Android 12 phone on a 4.19 or 5.4 kernel
+now installs, runs the chain and stops at `Unsupported kernel 5.4 android 11` in the log - the same
+stop issue #113 reports today from the far side of the install gate. The failure is better, not fixed:
+it explains itself instead of refusing the APK. The kernel floor is its own problem (#113, #132, #138)
+and this does not touch it.
+
+### Falls back to `libbase.so` when the `libc++` hook target is unusable
+Cherry-picked from upstream (`7a6513a6`, PR #185) and it applied cleanly, because this fork's `exp.c`
+never touched `patch_hook`, `struct PatchRestore` or the tail of `exploit()`. When the hook target's
+offsets cannot be located, `patch_hook` returns 1 and the run stopped there; it now retries the same
+shellcode against `android::base::LogMessage::~LogMessage()` in `libbase.so`, a destructor that also
+runs when `init` reaps an orphan and often sits in a stretch with more executable slack than the
+`libc++` ostream constructor. Nothing else in this tree had to follow it: `patch_hook` returns 1 from
+`find_hook_target` before it records anything on the `PatchRestore`, and `cleanup()` unwinds whichever
+library `g_libcxx_r` ended up holding, so the fallback restores with no second record - and a run
+where both targets fail restores nothing at all, `valid` never having been set, which is correct
+because nothing was written. `patch_ko` and `helper.c` are untouched by the hunk. It compiles in the
+arm64-v8a native build that picked it up; it has not been watched firing on a device that needed it.
+
+### Disabling modules no longer costs the root on a device that has none
+`disable_modules()` aborted the bootstrap when `opendir("/data/adb/modules")` failed. A manager that
+has never had a module installed has no such directory - the ordinary state of a fresh KernelSU - and
+the abort was not a warning: `main()` touched `/dev/dfme1` and returned before ksud was ever started,
+so the run ended with no root at all. That made the Modules card's OFF switch unusable on exactly the
+devices that reach for it, since disabling modules is what someone whose module is bootlooping the
+phone asks for first. ENOENT now reads as "there was nothing to disable", which is what the switch
+wants anyway, and the chain continues to ksud; any other errno is still a real failure (permission,
+I/O) and still aborts with `dfme1`. The fix says nothing out loud: bootstrap has no stdout channel,
+its only voice is the dfm and dfme nodes `exp.c` polls, and a step that succeeded quietly has nothing
+to report.
+
+### "Hooked" stopped being reported as "rooted"
+`/dev/df` is not a root marker. The shellcode creates it with `O_CREAT|O_EXCL` (`libcxx.S`) as a
+one-shot mutex and returns without running its payload on every later hit of the hook, so the node
+proves the payload started and says nothing about the stages behind it - module load, bootstrap, ksud,
+the su bind - any of which can fail on a boot where the node exists. Such a boot was described as
+rooted: `ExploitRunner.run()` returned 0 the moment it saw the node, which wrote `last_run_success`,
+which put "Verified" on the two-step bar. `canRun()` blocked the same boot on the same node with no
+explanation, so the pill read as "try again" for a retry that cannot work - an unprivileged app cannot
+unlink a node in root-owned devtmpfs, and nothing in this tree unlinks it.
+
+`RootState` is now the single reader of the node and states the boot as ROOTED, HOOKED_NO_ROOT or
+NOT_HOOKED, and the UI stops collapsing the middle one into either neighbour: the bar draws patch 100%
+with root "No su" instead of an empty strip or a false Verified, the Run pill reads Reboot and stays
+locked with the reason in the log, and the verdict after a run weighs the return code from `exp.c`
+against what the boot can prove instead of trusting one of the two. `BootReceiver` says which half of
+"already hooked" it is before spending a wakelock on a payload that will not run.
+
+The reading has a floor worth naming: su presence is checked at the three bind points `D2Writer`
+already uses, so a manager that binds su somewhere else reads as HOOKED_NO_ROOT. That is why nothing
+in the wording claims the device failed, and why reboot is the right advice under either reading.
+
+### Carries the 1.18 identity while the release is still open
+
+`versionCode` 35, `versionName` 1.18. The heading above stays `Unreleased` deliberately - the release is
+not declared and more is coming before it is. What had to change is how a build of this tree identifies
+itself: `master` already carries every entry in this section, and the only builds of it anyone can
+install are the `DFRoot` artifacts of the `Build` workflow, which up to now announced themselves as
+1.17 and so were tellable apart from the installed release only by their `minSdk`. The version pill,
+the `app version:` line `ExploitRunner` writes into every log and the rest of the UI all read these
+values through `BuildConfig`, so the bump in `app/build.gradle.kts` moves all of them at once.
+
+Renaming this section to `## 1.18` remains the release step, and it is load-bearing rather than
+cosmetic: the workflow scrapes release notes by matching the heading against the tag (`v1.18` ->
+`## 1.18`), which is why an unreleased section feeds the pre-release builds now and the release notes
+later without being rewritten twice.
+
 ## 1.17
 
 Based on upstream DFRoot 4.6 - 4.7, merged into this fork. `versionCode` 34, `versionName` 1.17.

@@ -1,4 +1,5 @@
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -178,8 +179,19 @@ static void touch(const char *path)
 static int disable_modules(void)
 {
     DIR *dir = opendir(MODULES_DIR);
-    if (!dir)
+    if (!dir) {
+        /* A manager that has never had a module installed has no MODULES_DIR at all, and this step
+         * exists only so that no module is left enabled - which an absent directory already
+         * satisfies. Returning -1 here used to cost the entire root: main() touches dfme1 and exits
+         * before ksud is ever started, so a user who switched the Modules card off on such a device
+         * could not get root at all, and KernelSU with no modules installed is the ordinary state of
+         * an untouched install. Anything other than ENOENT - permission, I/O - is a real failure and
+         * still aborts. Nothing is logged: bootstrap has no stdout channel, its only voice is the
+         * dfm and dfme nodes exp.c polls, and "there was nothing to disable" has nothing to say. */
+        if (errno == ENOENT)
+            return 0;
         return -1;
+    }
 
     struct dirent *ent;
     while ((ent = readdir(dir))) {

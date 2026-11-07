@@ -22,9 +22,9 @@
         <item name="android:colorPrimary">#FFB0B0B0</item>
         <item name="android:colorPrimaryDark">@color/black</item>
         <item name="android:textColorHighlight">#4D6E6E6E</item>
-        <!-- System splash screen. minSdk is 32, so these live here and NOT in a
-             values-v31 copy: that copy used to redefine this whole theme, which
-             silently overrode everything else on every supported device.
+        <!-- System splash screen. minSdk is 31 and both attributes arrived in API 31, so they
+             live here and NOT in a values-v31 copy: that copy used to redefine this whole theme,
+             which silently overrode everything else on every supported device.
              Background is BLACK, not transparent - a transparent splash lets
              OneUI fall back to its own surface. The animated icon is a transparent
              colour so no icon is shown at all. -->

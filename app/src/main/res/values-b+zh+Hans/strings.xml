@@ -39,6 +39,7 @@
     <string name="progress_waiting">等待开始</string>
     <string name="progress_verification">验证</string>
     <string name="progress_verified">已验证</string>
+    <string name="progress_no_su">未获取 su</string>
     <string name="progress_failure">提权失败</string>
     <string name="progress_reboot">请重启</string>
     <string name="progress_percent">%1$d%%</string>
