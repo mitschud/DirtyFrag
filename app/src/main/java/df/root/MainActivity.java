@@ -440,7 +440,7 @@ public class MainActivity extends Activity implements IReporter {
                             java.util.regex.Pattern.CASE_INSENSITIVE)
                     .matcher(log);
             // The StringBuilder overloads of appendReplacement/appendTail only exist
-            // from API 34 on, and minSdk is 32, so this normaliser used to die with
+            // from API 34 on, and minSdk is 31, so this normaliser used to die with
             // NoSuchMethodError on anything older than Android 14. StringBuffer has
             // carried both overloads since the first API level.
             StringBuffer sb = new StringBuffer();

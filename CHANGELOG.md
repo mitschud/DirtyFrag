@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+### Android 12 can install: `minSdk` 32 -> 31
+The floor of 32 came down with upstream's initial commit rather than from anything this fork needs, and
+nothing in the app calls an API above 31 - so it kept every Android 12 phone out at install time for no
+reason. `IpSecManager` and `UdpEncapsulationSocket` are API 28, the device-protected storage context the
+bootstrap reads is 24, and both splash-screen theme attributes arrived in API 31. The only place the old
+floor had actually been load-bearing was `readLastLog()`, which 1.17 moved off the API 34 `Matcher`
+overloads onto the ones carried since the first API level.
+
+Widening who can *install* is not the same as widening who can root, and this is where the honest limit
+sits. The embedded module table still bottoms out at `dfroot-android12-5.10.ko`, and that token is the
+kernel's GKI level, not the Android version the user sees: an Android 12 phone on a 4.19 or 5.4 kernel
+now installs, runs the chain and stops at `Unsupported kernel 5.4 android 11` in the log - the same
+stop issue #113 reports today from the far side of the install gate. The failure is better, not fixed:
+it explains itself instead of refusing the APK. The kernel floor is its own problem (#113, #132, #138)
+and this does not touch it.
+
 ## 1.17
 
 Based on upstream DFRoot 4.6 - 4.7, merged into this fork. `versionCode` 34, `versionName` 1.17.
