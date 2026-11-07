@@ -67,19 +67,6 @@ final class D2Status {
             this.maintenance = maintenance;
             this.detail = detail;
         }
-
-        /** The three submenu rows, worded the way the pill means them. */
-        String lockscreenLabel() {
-            return lockscreen ? "Yes" : "No";
-        }
-
-        String maintenanceLabel() {
-            return maintenance ? "On" : "Off";
-        }
-
-        String deviceLabel() {
-            return supported ? "Supported" : "Unsupported";
-        }
     }
 
     /**
