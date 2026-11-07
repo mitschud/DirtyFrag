@@ -18,6 +18,19 @@ stop issue #113 reports today from the far side of the install gate. The failure
 it explains itself instead of refusing the APK. The kernel floor is its own problem (#113, #132, #138)
 and this does not touch it.
 
+### Falls back to `libbase.so` when the `libc++` hook target is unusable
+Cherry-picked from upstream (`7a6513a6`, PR #185) and it applied cleanly, because this fork's `exp.c`
+never touched `patch_hook`, `struct PatchRestore` or the tail of `exploit()`. When the hook target's
+offsets cannot be located, `patch_hook` returns 1 and the run stopped there; it now retries the same
+shellcode against `android::base::LogMessage::~LogMessage()` in `libbase.so`, a destructor that also
+runs when `init` reaps an orphan and often sits in a stretch with more executable slack than the
+`libc++` ostream constructor. Nothing else in this tree had to follow it: `patch_hook` returns 1 from
+`find_hook_target` before it records anything on the `PatchRestore`, and `cleanup()` unwinds whichever
+library `g_libcxx_r` ended up holding, so the fallback restores with no second record - and a run
+where both targets fail restores nothing at all, `valid` never having been set, which is correct
+because nothing was written. `patch_ko` and `helper.c` are untouched by the hunk. It compiles in the
+arm64-v8a native build that picked it up; it has not been watched firing on a device that needed it.
+
 ### Disabling modules no longer costs the root on a device that has none
 `disable_modules()` aborted the bootstrap when `opendir("/data/adb/modules")` failed. A manager that
 has never had a module installed has no such directory - the ordinary state of a fresh KernelSU - and
