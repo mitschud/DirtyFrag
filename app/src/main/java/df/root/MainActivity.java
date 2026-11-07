@@ -619,26 +619,31 @@ public class MainActivity extends Activity implements IReporter {
                 (btn, checked) -> setAdvancedLog(checked));
         updateLogVisibility();
 
-        // Restore the simple status for the current state: rooted device or a
-        // successful last run -> 100% + Verified; failed run -> Failed.
+        // Restore the simple status for the current state. Live evidence about this boot outranks a
+        // remembered run: a hooked-without-root boot says so itself, and gets believed over either
+        // the last log's failure line or last_run_success - which an older build could have left
+        // true precisely because it misread this same state as a success.
         boolean rootedNow = bootState == RootState.State.ROOTED;
+        boolean hookedNoRoot = bootState == RootState.State.HOOKED_NO_ROOT;
         boolean lastSuccess = hasLastLog
                 && createDeviceProtectedStorageContext()
                         .getSharedPreferences("dfroot", MODE_PRIVATE)
                         .getBoolean("last_run_success", false);
         boolean lastFailed = hasLastLog
                 && last.toLowerCase().contains("=== exploit failed");
-        if (rootedNow || lastSuccess) {
+        if (hookedNoRoot) {
+            // Nothing at all used to be drawn on this path: a boot that was hooked without root
+            // showed an empty bar, which reads as "nothing happened" when the truth is that the
+            // patch landed and the root did not. The two segments may disagree, so they do. This
+            // also keeps the bar from contradicting the pill: the setFailedState() branch below
+            // relabels the pill "Run exploit", while the boot block above settled it on "Reboot".
+            binding.twoStep.setSeg1(1f, "100%");
+            binding.twoStep.setSeg2(1f, "No su", 0xFFE57373);
+        } else if (rootedNow || lastSuccess) {
             binding.twoStep.setSeg1(1f, "100%");
             binding.twoStep.setSeg2(1f, "Verified", 0xFFFFFFFF);
         } else if (lastFailed) {
             setFailedState();
-        } else if (bootState == RootState.State.HOOKED_NO_ROOT) {
-            // Nothing at all used to be drawn on this path: a boot that was hooked without root
-            // showed an empty bar, which reads as "nothing happened" when the truth is that the
-            // patch landed and the root did not. The two segments may disagree, so they do.
-            binding.twoStep.setSeg1(1f, "100%");
-            binding.twoStep.setSeg2(1f, "No su", 0xFFE57373);
         }
 
         binding.btnRun.setOnClickListener(v -> {
