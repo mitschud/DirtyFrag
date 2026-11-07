@@ -18,6 +18,18 @@ stop issue #113 reports today from the far side of the install gate. The failure
 it explains itself instead of refusing the APK. The kernel floor is its own problem (#113, #132, #138)
 and this does not touch it.
 
+### Disabling modules no longer costs the root on a device that has none
+`disable_modules()` aborted the bootstrap when `opendir("/data/adb/modules")` failed. A manager that
+has never had a module installed has no such directory - the ordinary state of a fresh KernelSU - and
+the abort was not a warning: `main()` touched `/dev/dfme1` and returned before ksud was ever started,
+so the run ended with no root at all. That made the Modules card's OFF switch unusable on exactly the
+devices that reach for it, since disabling modules is what someone whose module is bootlooping the
+phone asks for first. ENOENT now reads as "there was nothing to disable", which is what the switch
+wants anyway, and the chain continues to ksud; any other errno is still a real failure (permission,
+I/O) and still aborts with `dfme1`. The fix says nothing out loud: bootstrap has no stdout channel,
+its only voice is the dfm and dfme nodes `exp.c` polls, and a step that succeeded quietly has nothing
+to report.
+
 ## 1.17
 
 Based on upstream DFRoot 4.6 - 4.7, merged into this fork. `versionCode` 34, `versionName` 1.17.
