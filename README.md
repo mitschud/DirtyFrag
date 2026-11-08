@@ -2,12 +2,14 @@
   An ephemeral Android root utility powered by <strong>CVE-2026-43284</strong>.<br />
   Built for Samsung devices, with a <strong>One UI-inspired interface</strong>, KernelSU integration,<br />
   and no custom kernel or unlocked bootloader required on vulnerable devices.
-</p><p>
-  <a href="https://github.com/mitschud/DirtyFrag/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/mitschud/DirtyFrag?label=Release&style=flat-square&color=8dc63f" /></a>
-  <img alt="Android 12+" src="https://img.shields.io/badge/Android-12%2B-3DDC84?style=flat-square&logo=android&logoColor=white" />
-  <img alt="One UI 9" src="https://img.shields.io/badge/One%20UI-9-666666?style=flat-square" />
-  <img alt="KernelSU integration" src="https://img.shields.io/badge/SU-KernelSU-555555?style=flat-square" />
-  <a href="LICENSE"><img alt="License GPL-2.0-only" src="https://img.shields.io/badge/License-GPL--2.0--only-555555?style=flat-square" /></a>
+</p><p <p align="center">
+  <a href="https://github.com/mitschud/DirtyFrag/releases/latest"><img src="https://img.shields.io/github/v/release/mitschud/DirtyFrag?label=Release&color=brightgreen" alt="Release"></a>
+  <img src="https://img.shields.io/badge/Android-12%2B-3DDC84?logo=android&logoColor=white" alt="Android 12+">
+<img src="https://img.shields.io/badge/%F0%9F%94%B5-One%20UI%209-555" alt="One UI 9">
+  <img src="https://img.shields.io/badge/SU-KernelSU-555" alt="KernelSU">
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/License-GPL--2.0--only-555" alt="GPL-2.0-only">
+  </a>
 </p><p>
   <a href="https://github.com/mitschud/DirtyFrag/releases/latest"><strong>Download APK</strong></a>
   &nbsp;·&nbsp; <a href="https://github.com/mitschud/DirtyFrag/issues">Report an issue</a>
