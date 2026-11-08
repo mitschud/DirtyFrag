@@ -1,12 +1,21 @@
-# DirtyFrag (CVE-2026-43284)
-
-DirtyFrag is a hardened fork of [diabl0w/DFRoot](https://github.com/diabl0w/DFRoot). It exploits
-CVE-2026-43284 (DirtyFrag), a kernel page cache write primitive, to load a kernel module without an
-unlocked bootloader and without a custom kernel. The fork targets Samsung phones (OneUI, RKP and KDP
-hardening) and keeps upstream's SU-manager agnostic design.
+<div align="center"><img src="tools/icon-source.png" alt="DirtyFrag grenade logo" width="116" /><h1>DirtyFrag</h1> <p><strong>Root without unlocking. Gone after reboot.</strong></p><p>
+  An ephemeral Android root utility powered by <strong>CVE-2026-43284</strong>.<br />
+  Built for Samsung devices, with a <strong>One UI-inspired interface</strong>, KernelSU integration,<br />
+  and no custom kernel or unlocked bootloader required on vulnerable devices.
+</p><p>
+  <a href="https://github.com/mitschud/DirtyFrag/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/mitschud/DirtyFrag?label=Release&style=flat-square&color=8dc63f" /></a>
+  <img alt="Android 12+" src="https://img.shields.io/badge/Android-12%2B-3DDC84?style=flat-square&logo=android&logoColor=white" />
+  <img alt="One UI 9" src="https://img.shields.io/badge/One%20UI-9-666666?style=flat-square" />
+  <img alt="KernelSU integration" src="https://img.shields.io/badge/SU-KernelSU-555555?style=flat-square" />
+  <a href="LICENSE"><img alt="License GPL-2.0-only" src="https://img.shields.io/badge/License-GPL--2.0--only-555555?style=flat-square" /></a>
+</p><p>
+  <a href="https://github.com/mitschud/DirtyFrag/releases/latest"><strong>Download APK</strong></a>
+  &nbsp;·&nbsp; <a href="https://github.com/mitschud/DirtyFrag/issues">Report an issue</a>
+  &nbsp;·&nbsp; <a href="https://github.com/diabl0w/DFRoot">Upstream DFRoot</a>
+</p></div>
 
 > [!IMPORTANT]
-> Root is **ephemeral**. The kernel module, `su` and any loaded modules are gone the moment the
+Compatibility depends on the device's kernel and security patches. Root is **ephemeral**. The kernel module, `su` and any loaded modules are gone the moment the
 > device reboots. A reboot always returns the phone to a clean, unrooted state - which is also the
 > recovery path if a run goes wrong.
 
