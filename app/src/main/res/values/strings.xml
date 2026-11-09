@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">DirtyFrag</string>
+
+    <!-- Toolbar and menu -->
+    <string name="menu">Menu</string>
+    <string name="update">Update</string>
+    <string name="update_available_description">Update available, open the release page</string>
+    <string name="open_github">Open GitHub Page</string>
+    <string name="reset_ui_layout">Reset UI Layout</string>
+    <string name="expert_mode">Expert Mode</string>
+    <string name="hide_card">Hide card</string>
+
+    <!-- Manager and settings cards -->
+    <string name="su_manager">SU Manager</string>
+    <string name="su_manager_required">Not selected - required</string>
+    <string name="su_manager_selected">"%1$s  (%2$s)"</string>
+    <string name="su_manager_not_found">No app with libksud.so found</string>
+    <string name="select">Select</string>
+    <string name="autorun">Autorun</string>
+    <string name="autorun_expert">Autorun (Expert)</string>
+    <string name="autorun_description">Runs the exploit after boot</string>
+    <string name="auto_reboot">Auto reboot</string>
+    <string name="auto_reboot_expert">Auto reboot (Expert)</string>
+    <string name="auto_reboot_description">Soft reboots after root</string>
+    <string name="ksu_modules">KernelSU Modules</string>
+    <string name="modules_enabled">Enabled - Active at next reroot</string>
+    <string name="modules_disabled">Disabled - No Modules on reroot</string>
+    <string name="advanced_log">Show advanced log</string>
+    <string name="advanced_log_description">Shows full scrollable log</string>
+
+    <!-- Run controls and progress -->
+    <string name="run_exploit">Run exploit</string>
+    <string name="run_confirm">Are you sure</string>
+    <string name="running">Running</string>
+    <string name="rooted">Rooted</string>
+    <string name="manager">Manager</string>
+    <string name="open_su_manager">Open SU manager</string>
+    <string name="open">Open</string>
+    <string name="save_log">Save log to Downloads</string>
+    <string name="progress_waiting">Waiting</string>
+    <string name="progress_verification">Verification</string>
+    <string name="progress_verified">Verified</string>
+    <string name="progress_no_su">No su</string>
+    <string name="progress_failure">Failure</string>
+    <string name="progress_reboot">Reboot</string>
+    <string name="progress_percent">%1$d%%</string>
+
+    <!-- Samsung download-mode submenu -->
+    <string name="recovery">Recovery</string>
+    <string name="recovery_description">Recovery mode: toggle download-mode authorisation</string>
+    <string name="recovery_download">DL/Recovery</string>
+    <string name="recovery_lockscreen">Lockscreen</string>
+    <string name="recovery_maintenance">Maintenance Mode</string>
+    <string name="recovery_device">Device</string>
+    <string name="recovery_writer">Recovery Writer</string>
+    <string name="recovery_autorun_writer">Autorun Writer</string>
+    <string name="recovery_at_reroot">%1$s (at reroot)</string>
+    <string name="recovery_no_gate">%1$s (no gate)</string>
+    <string name="recovery_expert">%1$s (Expert)</string>
+    <string name="recovery_writing">Writing flag ...</string>
+    <string name="recovery_clearing">Clearing flag ...</string>
+    <string name="recovery_not_gated">Not gated here</string>
+    <string name="recovery_blocked">D2 Blocked</string>
+    <string name="recovery_allowed">Allowed</string>
+    <string name="recovery_unknown">Unknown</string>
+    <string name="recovery_supported">Supported</string>
+    <string name="recovery_unsupported">Unsupported</string>
+    <string name="recovery_yes">Yes</string>
+    <string name="recovery_no">No</string>
+    <string name="recovery_on">On</string>
+    <string name="recovery_off">Off</string>
+
+    <!-- On-screen log headings and common diagnostic messages -->
+    <string name="log_system">SYSTEM</string>
+    <string name="log_setup">SETUP</string>
+    <string name="log_patching">PATCHING</string>
+    <string name="log_init">INIT</string>
+    <string name="log_cleanup">CLEANUP</string>
+    <string name="log_success">EXPLOIT SUCCESS</string>
+    <string name="log_failure">EXPLOIT FAILED: %1$s</string>
+    <string name="log_app_version">app version: %1$s</string>
+    <string name="log_manufacturer">manufacturer: %1$s</string>
+    <string name="log_model">model: %1$s</string>
+    <string name="log_android_version">android version: %1$s</string>
+    <string name="log_security_patch">security patch: %1$s</string>
+    <string name="log_kernel_version">kernel version: %1$s</string>
+    <string name="log_already_hooked">already hooked, skipping</string>
+    <string name="log_buffer_off">ERROR: Developer Options → \'Log buffer size\' is set to Off.</string>
+    <string name="log_buffer_retry">Change it to any other value and retry.</string>
+    <string name="log_no_manager">no SU manager selected</string>
+    <string name="log_manager_removed">%1$s is no longer installed</string>
+    <string name="log_ksud_not_found">libksud.so not found in %1$s</string>
+    <string name="log_not_vulnerable">patch: DEVICE NOT VULNERABLE</string>
+    <string name="log_exception">exception: %1$s</string>
+    <string name="log_reason_prefs">READING PREFS FAILED</string>
+    <string name="log_reason_modules">DISABLE MODULES FAILED</string>
+    <string name="log_reason_ksud">KSUD NONZERO EXIT</string>
+    <string name="log_reason_check_logs">CHECK LOGCAT &amp; DMESG</string>
+    <string name="log_reason_patch">FAILED TO PATCH FILES</string>
+</resources>
