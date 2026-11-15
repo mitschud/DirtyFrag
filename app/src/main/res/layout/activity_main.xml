@@ -25,7 +25,7 @@
             android:layout_height="56dp"
             android:contentInsetStart="0dp"
             android:contentInsetStartWithNavigation="0dp"
-            android:title="DirtyFrag"
+            android:title="@string/app_name"
             android:titleMarginStart="32dp"
             android:titleTextAppearance="@style/ToolbarTitle">
 
@@ -38,7 +38,7 @@
                 android:layout_gravity="end|center_vertical"
                 android:layout_marginEnd="16dp"
                 android:background="@drawable/bg_circle"
-                android:contentDescription="Menu"
+                android:contentDescription="@string/menu"
                 android:scaleType="center"
                 android:src="@drawable/ic_more" />
 
@@ -67,7 +67,7 @@
                 android:layout_marginStart="32dp"
                 android:background="@drawable/bg_update_pill"
                 android:clickable="true"
-                android:contentDescription="Update available, open the release page"
+                android:contentDescription="@string/update_available_description"
                 android:focusable="true"
                 android:visibility="gone">
 
@@ -80,7 +80,7 @@
                     android:layout_height="match_parent"
                     android:layout_gravity="start|center_vertical"
                     android:gravity="center"
-                    android:text="Update"
+                    android:text="@string/update"
                     android:textColor="#FF101418"
                     android:textSize="16sp"
                     android:textStyle="bold" />
@@ -117,7 +117,7 @@
                 android:layout_marginEnd="6dp"
                 android:background="@drawable/bg_odin_pill"
                 android:clickable="true"
-                android:contentDescription="Recovery mode: toggle download-mode authorisation"
+                android:contentDescription="@string/recovery_description"
                 android:focusable="true"
                 android:gravity="center_vertical"
                 android:minWidth="44dp"
@@ -137,7 +137,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="5dp"
-                    android:text="Recovery"
+                    android:text="@string/recovery"
                     android:textColor="#FFD9D9D9"
                     android:textSize="12sp"
                     android:textStyle="bold" />
@@ -223,7 +223,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="SU Manager"
+                    android:text="@string/su_manager"
                     android:textColor="#FFFFFFFF"
                     android:textSize="16sp" />
 
@@ -231,7 +231,7 @@
                     android:id="@+id/suManagerSubtitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Not selected - required"
+                    android:text="@string/su_manager_required"
                     android:textColor="#FF9E9E9E"
                     android:textSize="12sp" />
 
@@ -242,7 +242,7 @@
                 android:layout_width="20dp"
                 android:layout_height="20dp"
                 android:layout_gravity="center_vertical"
-                android:contentDescription="Select"
+                android:contentDescription="@string/select"
                 android:src="@drawable/ic_chevron" />
 
         </LinearLayout>
@@ -285,7 +285,7 @@
                         android:id="@+id/tvAutorunTitle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Autorun"
+                        android:text="@string/autorun"
                         android:textColor="#FFFFFFFF"
                         android:textSize="16sp" />
 
@@ -293,7 +293,7 @@
                         android:id="@+id/tvAutorunDesc"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Runs the exploit after boot"
+                        android:text="@string/autorun_description"
                         android:textColor="#FF9E9E9E"
                         android:textSize="12sp" />
 
@@ -325,7 +325,7 @@
                         android:id="@+id/tvRebootTitle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Auto reboot"
+                        android:text="@string/auto_reboot"
                         android:textColor="#FFFFFFFF"
                         android:textSize="16sp" />
 
@@ -333,7 +333,7 @@
                         android:id="@+id/tvRebootDesc"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Soft reboots after root"
+                        android:text="@string/auto_reboot_description"
                         android:textColor="#FF9E9E9E"
                         android:textSize="12sp" />
 
@@ -381,7 +381,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="KernelSU Modules"
+                    android:text="@string/ksu_modules"
                     android:textColor="#FFFFFFFF"
                     android:textSize="16sp" />
 
@@ -389,7 +389,7 @@
                     android:id="@+id/modulesSubtitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Enabled - active at next reboot"
+                    android:text="@string/modules_enabled"
                     android:textColor="#FF9E9E9E"
                     android:textSize="12sp" />
 
@@ -436,14 +436,14 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Show advanced log"
+                    android:text="@string/advanced_log"
                     android:textColor="#FFFFFFFF"
                     android:textSize="16sp" />
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Shows full scrollable log"
+                    android:text="@string/advanced_log_description"
                     android:textColor="#FF9E9E9E"
                     android:textSize="12sp" />
 
@@ -545,7 +545,7 @@
         android:paddingEnd="28dp"
         android:elevation="12dp"
         android:stateListAnimator="@null"
-        android:text="Run exploit"
+        android:text="@string/run_exploit"
         android:textSize="14sp"
         android:backgroundTint="#FF7A7A7A"
         android:textColor="#FFE0E0E0"
@@ -572,7 +572,7 @@
         android:background="@drawable/bg_pill"
         android:backgroundTint="#FF2E2E30"
         android:clickable="true"
-        android:contentDescription="Open SU manager"
+        android:contentDescription="@string/open_su_manager"
         android:elevation="12dp"
         android:enabled="false"
         android:focusable="true"
@@ -590,7 +590,7 @@
             android:layout_gravity="start|center_vertical"
             android:layout_marginStart="22dp"
             android:alpha="0"
-            android:text="Manager"
+            android:text="@string/manager"
             android:textColor="#FF1F1F1F"
             android:textSize="14sp" />
 
@@ -600,7 +600,7 @@
             android:layout_height="20dp"
             android:layout_gravity="end|center_vertical"
             android:layout_marginEnd="17dp"
-            android:contentDescription="Open"
+            android:contentDescription="@string/open"
             android:src="@drawable/ic_chevron" />
 
     </FrameLayout>
@@ -630,7 +630,7 @@
         android:layout_alignBottom="@id/btnRun"
         android:layout_marginStart="33dp"
         android:background="@drawable/bg_circle_grey_ripple"
-        android:contentDescription="Save log to Downloads"
+        android:contentDescription="@string/save_log"
         android:elevation="12dp"
         android:padding="0dp"
         android:scaleType="center"
