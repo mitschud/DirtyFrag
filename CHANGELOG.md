@@ -79,6 +79,31 @@ cosmetic: the workflow scrapes release notes by matching the heading against the
 `## 1.18`), which is why an unreleased section feeds the pre-release builds now and the release notes
 later without being rewritten twice.
 
+### Simplified Chinese joins, and every UI string had to move for it
+PR #145 (`@edgeval`), restored after the branch behind it was deleted - the commits were still reachable
+from the PR's own ref, so the change came back whole. It adds `res/values/strings.xml`, the file this app
+never had, with `values-b+zh+Hans/strings.xml` beside it: every `android:text` and `contentDescription` in
+`activity_main.xml`, and every literal `MainActivity` used to paint with, now resolves through `R.string`.
+`res/xml/locales_config.xml` plus `android:localeConfig` names the two locales the app answers in. The
+app's own word stays put through it: `android:label` reads `@string/app_name`, marked
+`translatable="false"`, so the headline the update pill sizes itself against is the same word in either
+locale.
+
+The advanced log is translated at display rather than at source. `ExploitRunner`'s lines are the parse
+keys - `"=== SETUP ==="`, `"app version: "` - and the UI reads back what the chain wrote, so translating
+where a line is produced leaves the parser staring at text it no longer matches. `localizeLogLine()` runs
+inside `styleLogLine()` instead: `logBuffer` and the file `saveLog()` writes stay English, the screen
+reads Chinese. Three case-foldings on that path gained `Locale.ROOT` along the way - folding `init`
+through a Turkish locale gives `İNİT`, which `isHeader()` no longer matches, and rewriting an older run's
+`=== EXPLOIT FAILED ===` marker gives a dotless `ı` the next normalising pass cannot find.
+
+Honest limits. The translation is the contributor's: unproofread here, and not watched on a device set to
+Chinese. `values-b+zh+Hans` resolves by ordinary resource matching on every supported release, so a
+zh-Hans phone gets Chinese at API 31 and 32 like any other qualifier; `android:localeConfig` is API 33,
+so the per-app language switch in Settings only exists from 33 up and below that the app simply follows
+the system locale. The three boolean-label helpers in `D2Status` died with the change - yes/no, on/off
+and supported/unsupported are chosen from resources now, where the row is built.
+
 ## 1.17
 
 Based on upstream DFRoot 4.6 - 4.7, merged into this fork. `versionCode` 34, `versionName` 1.17.
