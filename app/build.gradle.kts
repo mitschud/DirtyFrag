@@ -15,14 +15,13 @@ android {
         // API 34 ones threw NoSuchMethodError below Android 14). So 12L-only was pure loss: it kept
         // every Android 12 phone out at install time for no reason.
         // This widens who can INSTALL, not who can root - the module table still bottoms out at
-        // dfroot-android12-5.10.ko. See the Unreleased section of CHANGELOG.md.
+        // dfroot-android12-5.10.ko. See the 1.18 section of CHANGELOG.md.
         minSdk = 31
         targetSdk = 37
-        // 1.18 / 35 while the 1.18 section of CHANGELOG.md is still Unreleased: master carries four
-        // fixes the released 1.17 does not, and the only published builds of them are the Build
-        // workflow's DFRoot artifact, so they have to be tellable apart from the installed release.
-        // The version pill, the log header ExploitRunner writes and everything else read these two
-        // lines through BuildConfig, so this is the only place the identity lives.
+        // 1.18 / 35, released as v1.18. The Build workflow scrapes release notes by matching the tag
+        // against the CHANGELOG heading, so this version and `## 1.18` have to agree. The version pill,
+        // the log header ExploitRunner writes and everything else read these two lines through
+        // BuildConfig, so this is the only place the identity lives.
         versionCode = 35
         versionName = "1.18"
 
@@ -99,5 +98,5 @@ dependencies {
     // df.root (CardStackLayout, DraggableCardView, PillButton, OneUiSwitch,
     // TwoStepProgressView, BottomFadeView). appcompat, material, constraintlayout and
     // viewbinding used to sit here and pulled 40 androidx/material artifacts into the
-    // APK; the replacements are documented under "Unreleased" in CHANGELOG.md.
+    // APK; the replacements are documented under "1.17" in CHANGELOG.md.
 }

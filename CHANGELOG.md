@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## 1.18
+
+Based on upstream DFRoot 4.6 - 4.7, plus one commit cherry-picked from upstream master (`7a6513a6`,
+PR #185). `versionCode` 35, `versionName` 1.18.
 
 ### Android 12 can install: `minSdk` 32 -> 31
 The floor of 32 came down with upstream's initial commit rather than from anything this fork needs, and
@@ -64,20 +67,19 @@ The reading has a floor worth naming: su presence is checked at the three bind p
 already uses, so a manager that binds su somewhere else reads as HOOKED_NO_ROOT. That is why nothing
 in the wording claims the device failed, and why reboot is the right advice under either reading.
 
-### Carries the 1.18 identity while the release is still open
+### Carries the 1.18 identity
 
-`versionCode` 35, `versionName` 1.18. The heading above stays `Unreleased` deliberately - the release is
-not declared and more is coming before it is. What had to change is how a build of this tree identifies
-itself: `master` already carries every entry in this section, and the only builds of it anyone can
-install are the `DFRoot` artifacts of the `Build` workflow, which up to now announced themselves as
-1.17 and so were tellable apart from the installed release only by their `minSdk`. The version pill,
-the `app version:` line `ExploitRunner` writes into every log and the rest of the UI all read these
-values through `BuildConfig`, so the bump in `app/build.gradle.kts` moves all of them at once.
+`versionCode` 35, `versionName` 1.18, bumped in `app/build.gradle.kts` and read from there by the version
+pill, the `app version:` line `ExploitRunner` writes into every log and the rest of the UI through
+`BuildConfig` - so that one file is where the identity lives. What had to change was how a build of this
+tree identifies itself: `master` already carried every entry in this section, and the only builds of it
+anyone could install were the `DFRoot` artifacts of the `Build` workflow, which up to then announced
+themselves as 1.17 and so were tellable apart from the installed release only by their `minSdk`.
 
-Renaming this section to `## 1.18` remains the release step, and it is load-bearing rather than
-cosmetic: the workflow scrapes release notes by matching the heading against the tag (`v1.18` ->
-`## 1.18`), which is why an unreleased section feeds the pre-release builds now and the release notes
-later without being rewritten twice.
+Renaming this section from `Unreleased` to `## 1.18` is the release step, and it is load-bearing rather
+than cosmetic: the workflow scrapes release notes by matching the heading against the tag (`v1.18` ->
+`## 1.18`), which is why the same section could feed the pre-release builds and then the release notes
+without being rewritten twice.
 
 ### Simplified Chinese joins, and every UI string had to move for it
 PR #145 (`@edgeval`), restored after the branch behind it was deleted - the commits were still reachable
@@ -97,12 +99,16 @@ reads Chinese. Three case-foldings on that path gained `Locale.ROOT` along the w
 through a Turkish locale gives `İNİT`, which `isHeader()` no longer matches, and rewriting an older run's
 `=== EXPLOIT FAILED ===` marker gives a dotless `ı` the next normalising pass cannot find.
 
-Honest limits. The translation is the contributor's: unproofread here, and not watched on a device set to
-Chinese. `values-b+zh+Hans` resolves by ordinary resource matching on every supported release, so a
-zh-Hans phone gets Chinese at API 31 and 32 like any other qualifier; `android:localeConfig` is API 33,
-so the per-app language switch in Settings only exists from 33 up and below that the app simply follows
-the system locale. The three boolean-label helpers in `D2Status` died with the change - yes/no, on/off
-and supported/unsupported are chosen from resources now, where the row is built.
+Honest limits. The wording is the contributor's and stays unproofread here. What has been watched since
+is the matching itself: on an SM-S931B under One UI 8, putting Simplified Chinese above English in the
+system language list brought up Chinese headlines, card titles, switches and log panel on the next launch,
+and taking it back out returned English. On this vendor that list is the only lever - One UI 8 offers no
+per-app language switch for DirtyFrag, and `android:localeConfig` registers nothing there. The same
+matching is what carries Chinese at API 31 and 32, where `localeConfig` (API 33) does not exist and the
+app simply follows the system locale. The saved log is the part not re-measured: `saveLog()` writes
+`logBuffer`, which the display-time translation never touches, so a Chinese session still saves English.
+The three boolean-label helpers in `D2Status` died with the change - yes/no, on/off and
+supported/unsupported are chosen from resources now, where the row is built.
 
 ## 1.17
 

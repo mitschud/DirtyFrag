@@ -62,6 +62,10 @@ again after every reinstall.
   vendor clears that byte on its own schedule and a reboot drops DirtyFrag's root with it, so
   **Autorun Writer** asks for the same write again at every reroot
 - When a newer release is published, the headline itself becomes a lime **Update** pill - one tap from the release
+- **Simplified Chinese UI** - since 1.18 the app follows the phone's language list and answers in Chinese
+  when `Simplified Chinese` sits above English (Samsung: Settings > System > Languages, drag it up). One
+  UI 8 has no per-app switch, so that list is the only lever. The advanced log translates at display
+  only: the screen reads Chinese, the file `saveLog()` writes stays English
 - Shizuku not needed
 
 ## FAQ
