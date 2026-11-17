@@ -5,6 +5,35 @@
 Based on upstream DFRoot 4.6 - 4.7, plus one commit cherry-picked from upstream master (`7a6513a6`,
 PR #185). `versionCode` 35, `versionName` 1.18.
 
+### Simplified Chinese joins, and every UI string had to move for it
+PR #145 (`@edgeval`), restored after the branch behind it was deleted - the commits were still reachable
+from the PR's own ref, so the change came back whole. It adds `res/values/strings.xml`, the file this app
+never had, with `values-b+zh+Hans/strings.xml` beside it: every `android:text` and `contentDescription` in
+`activity_main.xml`, and every literal `MainActivity` used to paint with, now resolves through `R.string`.
+`res/xml/locales_config.xml` plus `android:localeConfig` names the two locales the app answers in. The
+app's own word stays put through it: `android:label` reads `@string/app_name`, marked
+`translatable="false"`, so the headline the update pill sizes itself against is the same word in either
+locale.
+
+The advanced log is translated at display rather than at source. `ExploitRunner`'s lines are the parse
+keys - `"=== SETUP ==="`, `"app version: "` - and the UI reads back what the chain wrote, so translating
+where a line is produced leaves the parser staring at text it no longer matches. `localizeLogLine()` runs
+inside `styleLogLine()` instead: `logBuffer` and the file `saveLog()` writes stay English, the screen
+reads Chinese. Three case-foldings on that path gained `Locale.ROOT` along the way - folding `init`
+through a Turkish locale gives `İNİT`, which `isHeader()` no longer matches, and rewriting an older run's
+`=== EXPLOIT FAILED ===` marker gives a dotless `ı` the next normalising pass cannot find.
+
+Honest limits. The wording is the contributor's and stays unproofread here. What has been watched since
+is the matching itself: on an SM-S931B under One UI 9, putting Simplified Chinese above English in the
+system language list brought up Chinese headlines, card titles, switches and log panel on the next launch,
+and taking it back out returned English. On this vendor that list is the only lever - One UI 9 offers no
+per-app language switch for DirtyFrag, and `android:localeConfig` registers nothing there. The same
+matching is what carries Chinese at API 31 and 32, where `localeConfig` (API 33) does not exist and the
+app simply follows the system locale. The saved log is the part not re-measured: `saveLog()` writes
+`logBuffer`, which the display-time translation never touches, so a Chinese session still saves English.
+The three boolean-label helpers in `D2Status` died with the change - yes/no, on/off and
+supported/unsupported are chosen from resources now, where the row is built.
+
 ### Android 12 can install: `minSdk` 32 -> 31
 The floor of 32 came down with upstream's initial commit rather than from anything this fork needs, and
 nothing in the app calls an API above 31 - so it kept every Android 12 phone out at install time for no
@@ -80,35 +109,6 @@ Renaming this section from `Unreleased` to `## 1.18` is the release step, and it
 than cosmetic: the workflow scrapes release notes by matching the heading against the tag (`v1.18` ->
 `## 1.18`), which is why the same section could feed the pre-release builds and then the release notes
 without being rewritten twice.
-
-### Simplified Chinese joins, and every UI string had to move for it
-PR #145 (`@edgeval`), restored after the branch behind it was deleted - the commits were still reachable
-from the PR's own ref, so the change came back whole. It adds `res/values/strings.xml`, the file this app
-never had, with `values-b+zh+Hans/strings.xml` beside it: every `android:text` and `contentDescription` in
-`activity_main.xml`, and every literal `MainActivity` used to paint with, now resolves through `R.string`.
-`res/xml/locales_config.xml` plus `android:localeConfig` names the two locales the app answers in. The
-app's own word stays put through it: `android:label` reads `@string/app_name`, marked
-`translatable="false"`, so the headline the update pill sizes itself against is the same word in either
-locale.
-
-The advanced log is translated at display rather than at source. `ExploitRunner`'s lines are the parse
-keys - `"=== SETUP ==="`, `"app version: "` - and the UI reads back what the chain wrote, so translating
-where a line is produced leaves the parser staring at text it no longer matches. `localizeLogLine()` runs
-inside `styleLogLine()` instead: `logBuffer` and the file `saveLog()` writes stay English, the screen
-reads Chinese. Three case-foldings on that path gained `Locale.ROOT` along the way - folding `init`
-through a Turkish locale gives `İNİT`, which `isHeader()` no longer matches, and rewriting an older run's
-`=== EXPLOIT FAILED ===` marker gives a dotless `ı` the next normalising pass cannot find.
-
-Honest limits. The wording is the contributor's and stays unproofread here. What has been watched since
-is the matching itself: on an SM-S931B under One UI 8, putting Simplified Chinese above English in the
-system language list brought up Chinese headlines, card titles, switches and log panel on the next launch,
-and taking it back out returned English. On this vendor that list is the only lever - One UI 8 offers no
-per-app language switch for DirtyFrag, and `android:localeConfig` registers nothing there. The same
-matching is what carries Chinese at API 31 and 32, where `localeConfig` (API 33) does not exist and the
-app simply follows the system locale. The saved log is the part not re-measured: `saveLog()` writes
-`logBuffer`, which the display-time translation never touches, so a Chinese session still saves English.
-The three boolean-label helpers in `D2Status` died with the change - yes/no, on/off and
-supported/unsupported are chosen from resources now, where the row is built.
 
 ## 1.17
 
