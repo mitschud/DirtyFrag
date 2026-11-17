@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 工具栏和菜单 -->
+    <string name="menu">菜单</string>
+    <string name="update">更新</string>
+    <string name="update_available_description">有可用更新，打开发布页面</string>
+    <string name="open_github">打开 GitHub 项目</string>
+    <string name="reset_ui_layout">重置界面布局</string>
+    <string name="expert_mode">专家模式</string>
+    <string name="hide_card">隐藏卡片</string>
+
+    <!-- 管理器和设置卡片 -->
+    <string name="su_manager">Root 管理器</string>
+    <string name="su_manager_required">请选择管理器</string>
+    <string name="su_manager_selected">%1$s（%2$s）</string>
+    <string name="su_manager_not_found">未找到包含 libksud.so 的应用</string>
+    <string name="select">选择</string>
+    <string name="autorun">开机自动提权</string>
+    <string name="autorun_expert">开机自动提权（需专家模式）</string>
+    <string name="autorun_description">设备开机后自动尝试获取 Root</string>
+    <string name="auto_reboot">自动软重启</string>
+    <string name="auto_reboot_expert">自动软重启（需专家模式）</string>
+    <string name="auto_reboot_description">提权成功后执行软重启</string>
+    <string name="ksu_modules">KernelSU 模块</string>
+    <string name="modules_enabled">已启用，下次提权时加载模块</string>
+    <string name="modules_disabled">已禁用，下次提权时跳过模块</string>
+    <string name="advanced_log">显示高级日志</string>
+    <string name="advanced_log_description">查看可滚动的完整日志</string>
+
+    <!-- 提权操作和进度 -->
+    <string name="run_exploit">开始提权</string>
+    <string name="run_confirm">确认提权</string>
+    <string name="running">提权中</string>
+    <string name="rooted">已提权</string>
+    <string name="manager">管理器</string>
+    <string name="open_su_manager">打开 Root 管理器</string>
+    <string name="open">打开</string>
+    <string name="save_log">将日志保存到下载目录</string>
+    <string name="progress_waiting">等待开始</string>
+    <string name="progress_verification">验证</string>
+    <string name="progress_verified">已验证</string>
+    <string name="progress_no_su">未获取 su</string>
+    <string name="progress_failure">提权失败</string>
+    <string name="progress_reboot">请重启</string>
+    <string name="progress_percent">%1$d%%</string>
+
+    <!-- 三星下载模式菜单 -->
+    <string name="recovery">下载模式</string>
+    <string name="recovery_description">打开下载模式授权菜单</string>
+    <string name="recovery_download">下载／恢复模式</string>
+    <string name="recovery_lockscreen">锁屏凭据</string>
+    <string name="recovery_maintenance">维护模式</string>
+    <string name="recovery_device">设备支持</string>
+    <string name="recovery_writer">写入下载授权</string>
+    <string name="recovery_autorun_writer">自动写入授权</string>
+    <string name="recovery_at_reroot">%1$s（再次提权时）</string>
+    <string name="recovery_no_gate">%1$s（此固件不适用）</string>
+    <string name="recovery_expert">%1$s（需专家模式）</string>
+    <string name="recovery_writing">正在写入授权…</string>
+    <string name="recovery_clearing">正在清除授权…</string>
+    <string name="recovery_not_gated">此固件无此限制</string>
+    <string name="recovery_blocked">D2 已限制</string>
+    <string name="recovery_allowed">允许进入</string>
+    <string name="recovery_unknown">状态未知</string>
+    <string name="recovery_supported">支持</string>
+    <string name="recovery_unsupported">不支持</string>
+    <string name="recovery_yes">已设置</string>
+    <string name="recovery_no">未设置</string>
+    <string name="recovery_on">已开启</string>
+    <string name="recovery_off">已关闭</string>
+
+    <!-- 屏幕上的日志标题和常见诊断提示 -->
+    <string name="log_system">系统信息</string>
+    <string name="log_setup">准备</string>
+    <string name="log_patching">修补文件</string>
+    <string name="log_init">初始化</string>
+    <string name="log_cleanup">清理</string>
+    <string name="log_success">提权成功</string>
+    <string name="log_failure">提权失败：%1$s</string>
+    <string name="log_app_version">应用版本：%1$s</string>
+    <string name="log_manufacturer">制造商：%1$s</string>
+    <string name="log_model">设备型号：%1$s</string>
+    <string name="log_android_version">Android 版本：%1$s</string>
+    <string name="log_security_patch">安全补丁：%1$s</string>
+    <string name="log_kernel_version">内核版本：%1$s</string>
+    <string name="log_already_hooked">已检测到提权挂钩，跳过本次运行</string>
+    <string name="log_buffer_off">开发者选项中的「日志缓冲区大小」已关闭。</string>
+    <string name="log_buffer_retry">请选择一个日志缓冲区大小，再重试。</string>
+    <string name="log_no_manager">尚未选择 Root 管理器</string>
+    <string name="log_manager_removed">%1$s 已卸载</string>
+    <string name="log_ksud_not_found">在 %1$s 中找不到 libksud.so</string>
+    <string name="log_not_vulnerable">修补检查显示设备不受此漏洞影响</string>
+    <string name="log_exception">异常：%1$s</string>
+    <string name="log_reason_prefs">读取应用设置失败</string>
+    <string name="log_reason_modules">停用模块失败</string>
+    <string name="log_reason_ksud">ksud 退出并返回错误</string>
+    <string name="log_reason_check_logs">请检查 logcat 和 dmesg 日志</string>
+    <string name="log_reason_patch">修补文件失败</string>
+</resources>
