@@ -125,7 +125,10 @@ public class OneUiSwitch extends View {
 
         float ty = MARGIN * d;
         float txTravel = w - (THUMB_D + 2 * MARGIN) * d;
-        float tx = ty + txTravel * progress;
+        // Keep the checked thumb at the logical end of the switch. In RTL the
+        // visual end is the left edge, while progress remains 0=off, 1=on.
+        boolean rtl = getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
+        float tx = ty + txTravel * (rtl ? 1f - progress : progress);
         thumbRect.set(tx, ty, tx + THUMB_D * d, ty + THUMB_D * d);
         canvas.drawRoundRect(thumbRect, THUMB_D * d / 2f, THUMB_D * d / 2f, thumbPaint);
     }
