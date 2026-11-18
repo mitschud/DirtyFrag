@@ -774,7 +774,7 @@ public class MainActivity extends Activity implements IReporter {
             ghRow.setBackgroundResource(R.drawable.menu_row_highlight);
             ghRow.setText(R.string.open_github);
             ghRow.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.START);
-            ghRow.setPadding((int) (20 * md), 0, 0, 0);
+            ghRow.setPaddingRelative((int) (20 * md), 0, 0, 0);
             ghRow.setTextColor(0xFFE8E8E8);
             ghRow.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15);
             ghRow.setOnClickListener(v2 -> {
@@ -797,7 +797,7 @@ public class MainActivity extends Activity implements IReporter {
             rlRow.setBackgroundResource(R.drawable.menu_row_highlight);
             rlRow.setText(R.string.reset_ui_layout);
             rlRow.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.START);
-            rlRow.setPadding((int) (20 * md), 0, 0, 0);
+            rlRow.setPaddingRelative((int) (20 * md), 0, 0, 0);
             rlRow.setTextColor(0xFFE8E8E8);
             rlRow.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15);
             rlRow.setOnClickListener(v2 -> {
@@ -822,7 +822,7 @@ public class MainActivity extends Activity implements IReporter {
             // at the bottom - closest to the card it arms.
             android.widget.LinearLayout exRow = new android.widget.LinearLayout(this);
             exRow.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.START);
-            exRow.setPadding((int) (20 * md), 0, (int) (20 * md), 0);
+            exRow.setPaddingRelative((int) (20 * md), 0, (int) (20 * md), 0);
             exRow.setBackgroundResource(R.drawable.menu_row_highlight);
             TextView exText = new TextView(this);
             exText.setText(R.string.expert_mode);
@@ -1379,7 +1379,7 @@ public class MainActivity extends Activity implements IReporter {
             col.setOrientation(android.widget.LinearLayout.VERTICAL);
             col.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.START);
             col.setBackgroundResource(R.drawable.menu_row_highlight);
-            col.setPadding((int) (20 * md), 0, (int) (20 * md), 0);
+            col.setPaddingRelative((int) (20 * md), 0, (int) (20 * md), 0);
 
             android.widget.LinearLayout line = new android.widget.LinearLayout(this);
             line.setOrientation(android.widget.LinearLayout.HORIZONTAL);
@@ -1396,7 +1396,7 @@ public class MainActivity extends Activity implements IReporter {
                 android.widget.LinearLayout.LayoutParams dotLp =
                         new android.widget.LinearLayout.LayoutParams(
                                 (int) (7 * md), (int) (7 * md));
-                dotLp.setMargins((int) (7 * md), 0, 0, 0);
+                dotLp.setMarginStart((int) (7 * md));
                 line.addView(dot, dotLp);
             }
             col.addView(line, new android.widget.LinearLayout.LayoutParams(
@@ -2089,10 +2089,15 @@ public class MainActivity extends Activity implements IReporter {
 
         int[] loc = new int[2];
         binding.menuAnchor.getLocationOnScreen(loc);
-        int cardRight = loc[0] + binding.menuAnchor.getWidth();
+        boolean rtl = getWindow().getDecorView().getLayoutDirection()
+                == View.LAYOUT_DIRECTION_RTL;
+        // The anchor is on the logical end of the toolbar. In RTL its x value
+        // is the popup's left edge; in LTR the popup is right-aligned to it.
+        int cardLeft = rtl ? loc[0] : loc[0] + binding.menuAnchor.getWidth() - pw_w;
         int screenW = getResources().getDisplayMetrics().widthPixels;
         int room = (int) (40 * md);
-        int roomLeft = Math.max(0, cardRight - pw_w);
+        int cardRight = cardLeft + pw_w;
+        int roomLeft = Math.max(0, cardLeft);
         int roomRight = Math.max(0, screenW - cardRight);
         int padL = Math.min(room, roomLeft);
         int padR = Math.min(room, roomRight);
@@ -2129,14 +2134,14 @@ public class MainActivity extends Activity implements IReporter {
         binding.dimOverlay.setVisibility(View.VISIBLE);
         binding.dimOverlay.setAlpha(0f);
         binding.dimOverlay.animate().alpha(0.75f).setDuration(150).start();
-        box.setPivotX(pw_w);
+        box.setPivotX(rtl ? 0f : pw_w);
         box.setPivotY(0f);
         box.setScaleX(0.85f);
         box.setScaleY(0.9f);
         box.setAlpha(0f);
         pw.showAtLocation(binding.menuAnchor,
                 android.view.Gravity.TOP | android.view.Gravity.START,
-                cardRight - pw_w - padL, loc[1] + (int) (2 * md) - padT);
+                cardLeft - padL, loc[1] + (int) (2 * md) - padT);
         box.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(150)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator())
                 .start();
@@ -2478,7 +2483,8 @@ public class MainActivity extends Activity implements IReporter {
         android.widget.RelativeLayout.LayoutParams lp =
                 (android.widget.RelativeLayout.LayoutParams)
                         binding.btnRun.getLayoutParams();
-        lp.leftMargin = (int) (PILL_INSET_FRACTION * parentW);
+        int insetPx = (int) (PILL_INSET_FRACTION * parentW);
+        lp.setMarginStart(insetPx);
         lp.width = (int) (pillPercent * parentW);
         binding.btnRun.setLayoutParams(lp);
         // The share circle mirrors the pill's left edge, so it takes the same
@@ -2494,8 +2500,8 @@ public class MainActivity extends Activity implements IReporter {
             float gap = KSU_GAP_DP * getResources().getDisplayMetrics().density;
             // Math.round, not a truncate: btnKsu's 12dp layout_marginStart rounds
             // to 34 px, and a truncated 33 here left the row visibly lopsided.
-            shareLp.leftMargin = Math.max(0,
-                    lp.leftMargin - Math.round(gap) - shareLp.width);
+            shareLp.setMarginStart(Math.max(0,
+                    insetPx - Math.round(gap) - shareLp.width));
             binding.btnShareLog.setLayoutParams(shareLp);
         }
     }

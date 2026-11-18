@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">DirtyFrag</string>
+
+    <!-- شريط الأدوات والقائمة -->
+    <string name="menu">القائمة</string>
+    <string name="update">تحديث</string>
+    <string name="update_available_description">يوجد تحديث متاح، افتح صفحة الإصدار</string>
+    <string name="open_github">فتح صفحة GitHub</string>
+    <string name="reset_ui_layout">إعادة ضبط تخطيط الواجهة</string>
+    <string name="expert_mode">وضع الخبير</string>
+    <string name="hide_card">إخفاء البطاقة</string>
+
+    <!-- بطاقات المدير والإعدادات -->
+    <string name="su_manager">مدير SU</string>
+    <string name="su_manager_required">غير محدد - مطلوب</string>
+    <string name="su_manager_selected">"%1$s  (%2$s)"</string>
+    <string name="su_manager_not_found">لم يتم العثور على تطبيق يحتوي على libksud.so</string>
+    <string name="select">اختيار</string>
+    <string name="autorun">تشغيل تلقائي</string>
+    <string name="autorun_expert">تشغيل تلقائي (خبير)</string>
+    <string name="autorun_description">يشغّل الإكسبلويت بعد الإقلاع</string>
+    <string name="auto_reboot">إعادة تشغيل تلقائية</string>
+    <string name="auto_reboot_expert">إعادة تشغيل تلقائية (خبير)</string>
+    <string name="auto_reboot_description">سوفت ريبوت بعد الروت</string>
+    <string name="ksu_modules">وحدات KernelSU</string>
+    <string name="modules_enabled">مفعّلة - ستعمل عند إعادة التشغيل القادمة</string>
+    <string name="modules_disabled">معطّلة - لا وحدات عند إعادة التشغيل</string>
+    <string name="advanced_log">عرض السجل المتقدم</string>
+    <string name="advanced_log_description">يعرض السجل الكامل القابل للتمرير</string>
+
+    <!-- عناصر التحكم في التشغيل والتقدم -->
+    <string name="run_exploit">تشغيل الإكسبلويت</string>
+    <string name="run_confirm">هل أنت متأكد</string>
+    <string name="running">قيد التشغيل</string>
+    <string name="rooted">تم الروت</string>
+    <string name="manager">المدير</string>
+    <string name="open_su_manager">فتح مدير SU</string>
+    <string name="open">فتح</string>
+    <string name="save_log">حفظ السجل في مجلد التنزيلات</string>
+    <string name="progress_waiting">في الانتظار</string>
+    <string name="progress_verification">التحقق</string>
+    <string name="progress_verified">تم التحقق</string>
+    <string name="progress_no_su">لا يوجد su</string>
+    <string name="progress_failure">فشل</string>
+    <string name="progress_reboot">إعادة التشغيل</string>
+    <string name="progress_percent">%1$d%%</string>
+
+    <!-- قائمة وضع التنزيل الخاص بسامسونج -->
+    <string name="recovery">الريكفري</string>
+    <string name="recovery_description">وضع الريكفري: تفعيل أو تعطيل تصريح الدخول لوضع التنزيل</string>
+    <string name="recovery_download">وضع التنزيل/الريكفري</string>
+    <string name="recovery_lockscreen">شاشة القفل</string>
+    <string name="recovery_maintenance">وضع الصيانة</string>
+    <string name="recovery_device">الجهاز</string>
+    <string name="recovery_writer">كتابة فلاج الريكفري</string>
+    <string name="recovery_autorun_writer">كتابة فلاج التشغيل التلقائي</string>
+    <string name="recovery_at_reroot">%1$s (عند إعادة التشغيل)</string>
+    <string name="recovery_no_gate">%1$s (بدون قيد)</string>
+    <string name="recovery_expert">%1$s (خبير)</string>
+    <string name="recovery_writing">جارٍ كتابة الفلاج ...</string>
+    <string name="recovery_clearing">جارٍ مسح الفلاج ...</string>
+    <string name="recovery_not_gated">غير مقيّد هنا</string>
+    <string name="recovery_blocked">محظور D2</string>
+    <string name="recovery_allowed">مسموح</string>
+    <string name="recovery_unknown">غير معروف</string>
+    <string name="recovery_supported">مدعوم</string>
+    <string name="recovery_unsupported">غير مدعوم</string>
+    <string name="recovery_yes">نعم</string>
+    <string name="recovery_no">لا</string>
+    <string name="recovery_on">تشغيل</string>
+    <string name="recovery_off">إيقاف</string>
+
+    <!-- عناوين السجل على الشاشة ورسائل التشخيص الشائعة -->
+    <string name="log_system">النظام</string>
+    <string name="log_setup">الإعداد</string>
+    <string name="log_patching">التعديل</string>
+    <string name="log_init">التهيئة</string>
+    <string name="log_cleanup">التنظيف</string>
+    <string name="log_success">نجح الإكسبلويت</string>
+    <string name="log_failure">فشل الإكسبلويت: %1$s</string>
+    <string name="log_app_version">إصدار التطبيق: %1$s</string>
+    <string name="log_manufacturer">الشركة المصنعة: %1$s</string>
+    <string name="log_model">الطراز: %1$s</string>
+    <string name="log_android_version">إصدار أندرويد: %1$s</string>
+    <string name="log_security_patch">تصحيح الأمان: %1$s</string>
+    <string name="log_kernel_version">إصدار النواة: %1$s</string>
+    <string name="log_already_hooked">تم عمل hook مسبقًا، جارٍ التخطي</string>
+    <string name="log_buffer_off">خطأ: خيارات المطورين ← \'حجم مخزن السجل\' مضبوط على إيقاف.</string>
+    <string name="log_buffer_retry">غيّره إلى أي قيمة أخرى وأعد المحاولة.</string>
+    <string name="log_no_manager">لم يتم اختيار مدير SU</string>
+    <string name="log_manager_removed">%1$s لم يعد مثبتًا</string>
+    <string name="log_ksud_not_found">لم يتم العثور على libksud.so في %1$s</string>
+    <string name="log_not_vulnerable">التعديل: الجهاز غير قابل للإكسبلويت</string>
+    <string name="log_exception">استثناء: %1$s</string>
+    <string name="log_reason_prefs">فشلت قراءة التفضيلات</string>
+    <string name="log_reason_modules">فشل تعطيل الوحدات</string>
+    <string name="log_reason_ksud">فشل تنفيذ ksud (exit code غير صفري)</string>
+    <string name="log_reason_check_logs">تحقق من logcat و dmesg</string>
+    <string name="log_reason_patch">فشل تعديل الملفات</string>
+</resources>

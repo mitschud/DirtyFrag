@@ -22,6 +22,8 @@
         <item name="android:colorPrimary">#FFB0B0B0</item>
         <item name="android:colorPrimaryDark">@color/black</item>
         <item name="android:textColorHighlight">#4D6E6E6E</item>
+        <item name="android:layoutDirection">locale</item>
+        <item name="android:textDirection">locale</item>
         <!-- System splash screen. minSdk is 31 and both attributes arrived in API 31, so they
              live here and NOT in a values-v31 copy: that copy used to redefine this whole theme,
              which silently overrode everything else on every supported device.
@@ -41,8 +43,8 @@
         <item name="android:textAppearanceListItemSmall">@style/DF_MenuText</item>
         <!-- Popup sizing: taller rows, narrower side padding. -->
         <item name="android:listPreferredItemHeightSmall">56dp</item>
-        <item name="android:listPreferredItemPaddingLeft">12dp</item>
-        <item name="android:listPreferredItemPaddingRight">12dp</item>
+        <item name="android:listPreferredItemPaddingStart">12dp</item>
+        <item name="android:listPreferredItemPaddingEnd">12dp</item>
     </style>
     <style name="DF_MenuText" parent="@android:style/TextAppearance.Material">
         <item name="android:textSize">15sp</item>

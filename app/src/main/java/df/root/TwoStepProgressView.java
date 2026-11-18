@@ -135,17 +135,25 @@ public class TwoStepProgressView extends View {
         fillPaint.setColor(failed ? FAILED_RED
                 : mixColor(FILL, FILL_GREY, greyMix));
 
-        rect.set(0, 0, half, barH);
+        boolean rtl = getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
+        float firstStart = rtl ? half + gap : 0f;
+        float secondStart = rtl ? 0f : half + gap;
+
+        rect.set(firstStart, 0, firstStart + half, barH);
         canvas.drawRoundRect(rect, barH / 2f, barH / 2f, trackPaint);
         if (seg1 > 0f) {
-            rect.set(0, 0, Math.max(barH, half * seg1), barH);
+            float fill = Math.max(barH, half * seg1);
+            rect.set(rtl ? firstStart + half - fill : firstStart,
+                    0, rtl ? firstStart + half : firstStart + fill, barH);
             canvas.drawRoundRect(rect, barH / 2f, barH / 2f, fillPaint);
         }
 
-        rect.set(half + gap, 0, w, barH);
+        rect.set(secondStart, 0, secondStart + half, barH);
         canvas.drawRoundRect(rect, barH / 2f, barH / 2f, trackPaint);
         if (seg2 > 0f) {
-            rect.set(half + gap, 0, half + gap + Math.max(barH, half * seg2), barH);
+            float fill = Math.max(barH, half * seg2);
+            rect.set(rtl ? secondStart + half - fill : secondStart,
+                    0, rtl ? secondStart + half : secondStart + fill, barH);
             canvas.drawRoundRect(rect, barH / 2f, barH / 2f, fillPaint);
         }
 
@@ -159,8 +167,9 @@ public class TwoStepProgressView extends View {
         // turn red in failure mode.
         textPaint.setColor(mixColor(failed ? FAILED_RED : 0xFFFFFFFF,
                 LABEL_GREY, greyMix));
-        canvas.drawText(leftLabel, half / 2f, ty, textPaint);
+        canvas.drawText(leftLabel, rtl ? firstStart + half / 2f : half / 2f, ty, textPaint);
         textPaint.setColor(mixColor(rightColor, LABEL_GREY, greyMix));
-        canvas.drawText(rightLabel, half + gap + half / 2f, ty, textPaint);
+        canvas.drawText(rightLabel, rtl ? secondStart + half / 2f : half + gap + half / 2f,
+                ty, textPaint);
     }
 }
