@@ -31,6 +31,9 @@ public class BootReceiver extends BroadcastReceiver implements IReporter {
 
     @Override
     public void onReceive(Context context, Intent intent) {
+        if (!Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
+            return;
+        }
         // Nothing can take the shellcode's /dev/df mutex a second time (see RootState), so a run
         // started here would only hold a wakelock while it polls nodes that cannot move. Saying
         // "already hooked, skipping" hides the one case a user needs in logcat: a boot that was
