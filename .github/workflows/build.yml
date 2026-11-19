@@ -35,14 +35,7 @@ jobs:
     strategy:
       matrix:
         kmi:
-          - android12-5.10
-          - android13-5.10
           - android13-5.15
-          - android14-5.15
-          - android14-6.1
-          - android15-6.6
-          - android16-6.12
-          - android17-6.18
     container:
       image: ghcr.io/ylarod/ddk-min:${{ matrix.kmi }}-20260828
       options: --privileged
