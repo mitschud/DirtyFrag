@@ -15,7 +15,7 @@
     <string name="su_manager">SU Manager</string>
     <string name="su_manager_required">Not selected - required</string>
     <string name="su_manager_selected">"%1$s  (%2$s)"</string>
-    <string name="su_manager_not_found">No app with libksud.so found</string>
+    <string name="su_manager_not_found">No app with libksud.so or libapd.so found</string>
     <string name="select">Select</string>
     <string name="autorun">Autorun</string>
     <string name="autorun_expert">Autorun (Expert)</string>
@@ -90,7 +90,7 @@
     <string name="log_buffer_retry">Change it to any other value and retry.</string>
     <string name="log_no_manager">no SU manager selected</string>
     <string name="log_manager_removed">%1$s is no longer installed</string>
-    <string name="log_ksud_not_found">libksud.so not found in %1$s</string>
+    <string name="log_ksud_not_found">libksud.so / libapd.so not found in %1$s</string>
     <string name="log_not_vulnerable">patch: DEVICE NOT VULNERABLE</string>
     <string name="log_exception">exception: %1$s</string>
     <string name="log_reason_prefs">READING PREFS FAILED</string>

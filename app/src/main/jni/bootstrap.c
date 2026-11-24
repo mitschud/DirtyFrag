@@ -12,6 +12,7 @@
 #define BLKROSET   0x125d
 #define KSUD_STAGE "/data/user_de/0/df.root/ksud"
 #define KSUD       "/data/adb/ksud"
+#define APD        "/data/adb/apd"
 #define PREFS_PATH "/data/user_de/0/df.root/shared_prefs/dfroot.xml"
 #define MODULES_DIR "/data/adb/modules"
 
@@ -140,7 +141,7 @@ static int late_load_running(void)
         buf[n] = '\0';
         for (int i = 0; i < n; i++)
             if (!buf[i]) buf[i] = ' ';
-        if (strstr(buf, "ksud") && strstr(buf, "late-load")) {
+        if ((strstr(buf, "ksud") || strstr(buf, "apd")) && strstr(buf, "late-load")) {
             found = 1;
             break;
         }
@@ -231,12 +232,16 @@ int main(void)
         }
     }
 
-    touch("/dev/dfm5");    
+    touch("/dev/dfm5");
     if (run_ctx(NULL, (char *[]){ KSUD_STAGE, "late-load", "--package-name", su_manager, NULL }) == 0) {
         touch("/dev/dfm6");
         if (soft_reboot) {
             while (late_load_running()) sleep(1);
-            run_ctx("u:r:ksu:s0", (char *[]){ KSUD, "soft-reboot", NULL });
+            const char *daemon = access(KSUD, X_OK) == 0 ? KSUD
+                               : access(APD,  X_OK) == 0 ? APD
+                               : KSUD_STAGE;
+            run_ctx(daemon == KSUD ? "u:r:ksu:s0" : NULL,
+                    (char *[]){ (char *)daemon, "soft-reboot", NULL });
         }
     } else {
         touch("/dev/dfme2");

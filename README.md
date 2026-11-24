@@ -1,12 +1,12 @@
 <div align="center"><img src="tools/icon-source.png" alt="DirtyFrag grenade logo" width="116" /><h1>DirtyFrag</h1> <p><strong>Root without unlocking. Gone after reboot.</strong></p><p>
   An ephemeral Android root utility powered by <strong>CVE-2026-43284</strong>.<br />
-  Built for Samsung devices, with a <strong>One UI-inspired interface</strong>, KernelSU integration,<br />
+  Built for Samsung devices, with a <strong>One UI-inspired interface</strong>, KernelSU / APatch integration,<br />
   and no custom kernel or unlocked bootloader required on vulnerable devices.
 </p><p <p align="center">
   <a href="https://github.com/mitschud/DirtyFrag/releases/latest"><img src="https://img.shields.io/github/v/release/mitschud/DirtyFrag?label=Release&color=brightgreen" alt="Release"></a>
   <img src="https://img.shields.io/badge/Android-12%2B-3DDC84?logo=android&logoColor=white" alt="Android 12+">
 <img src="https://img.shields.io/badge/%F0%9F%94%B5-One%20UI%209-555" alt="One UI 9">
-  <img src="https://img.shields.io/badge/SU-KernelSU-555" alt="KernelSU">
+  <img src="https://img.shields.io/badge/SU-KernelSU%20%7C%20APatch-555" alt="KernelSU | APatch">
   <a href="LICENSE">
     <img src="https://img.shields.io/badge/License-GPL--2.0--only-555" alt="GPL-2.0-only">
   </a>
@@ -24,7 +24,7 @@ Compatibility depends on the device's kernel and security patches. Root is **eph
 ## Install
 
 1. Install the DirtyFrag APK from [Releases](https://github.com/mitschud/DirtyFrag/releases/latest).
-2. Install an SU manager that **ships `libksud.so`**:
+2. Install an SU manager that **ships `libksud.so` or `libapd.so`**:
    - Samsung - **required**:
      - [diabl0w's KernelSU](https://github.com/diabl0w/KernelSU/releases)
    - Other:
@@ -32,12 +32,13 @@ Compatibility depends on the device's kernel and security patches. Root is **eph
      - [KernelSU-Next](https://github.com/KernelSU-Next/KernelSU-Next/releases/latest)
      - [KowSU](https://github.com/KOWX712/KernelSU/releases/latest)
      - [BakaSU](https://github.com/Baka-SU/BakaSU/releases/latest) (formerly ReSukiSU)
+     - [APatch](https://github.com/bmax121/APatch/releases) (jailbreak / `late-load` build)
 3. Open DirtyFrag, pick your manager in the **SU Manager** card, then press **Run exploit**.
 
 > [!WARNING]
 > Since 1.10 (upstream 3.2) DirtyFrag no longer bundles `ksud` - it is staged from the selected
-> manager's own `libksud.so`. A manager that does not ship that library cannot give you root. The
-> older advice to install a CI / Actions build of the manager no longer applies.
+> manager's own `libksud.so` (or `libapd.so` for APatch). A manager that does not ship that library
+> cannot give you root. The older advice to install a CI / Actions build of the manager no longer applies.
 
 > [!NOTE]
 > Pre-release builds of `master` are not published to Releases. Take the **`DFRoot`** artifact of the
@@ -61,7 +62,7 @@ again after every reinstall.
 - **Autorun** (start on boot), gated behind Expert mode, with a failed-run interlock that disables
   itself after a failed attempt so a bad run cannot boot-loop you
 - **Auto reboot** (soft reboot) - since 1.11 (upstream 4.1) this works with every KernelSU
-  derivative: `dfroot.ko` is unloaded after late-load and ksud's own `soft-reboot` is run
+  derivative and APatch: `dfroot.ko` is unloaded after late-load and the manager daemon's own `soft-reboot` is run
 - **KernelSU Modules** on/off - works without root, applied by the kernel module before ksud starts
 - RO Partition Protection
 - Advanced log, with one tap to save it to Downloads
@@ -114,7 +115,7 @@ re-run a "slow" run, the daemon may still be working.
 
 **Q: How do I remove root cleanly?**
 
-A: Before unrooting, use file manager with root and delete /data/adb/ksu, ksud, module residue.
+A: Before unrooting, use file manager with root and delete `/data/adb/ksu`, `ksud` (or `/data/adb/ap`, `apd`), and module residue.
 
 ## Building
 

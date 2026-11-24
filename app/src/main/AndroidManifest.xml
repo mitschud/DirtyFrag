@@ -11,6 +11,7 @@
          the Play policy lint that flags this broad permission does not apply. -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
+    <uses-permission android:name="com.android.permission.GET_INSTALLED_APPS" />
     <application
         android:label="@string/app_name"
         android:allowBackup="false"
