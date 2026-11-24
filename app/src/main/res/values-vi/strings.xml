@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Thanh công cụ và menu -->
+    <string name="menu">Menu</string>
+    <string name="update">Cập nhật</string>
+    <string name="update_available_description">Có bản cập nhật mới, mở trang phát hành</string>
+    <string name="open_github">Mở trang GitHub</string>
+    <string name="reset_ui_layout">Đặt lại bố cục giao diện</string>
+    <string name="expert_mode">Chế độ chuyên gia</string>
+    <string name="hide_card">Ẩn thẻ</string>
+
+    <!-- Trình quản lý và các thẻ cài đặt -->
+    <string name="su_manager">Trình quản lý SU</string>
+    <string name="su_manager_required">Chưa chọn - bắt buộc</string>
+    <string name="su_manager_selected">"%1$s  (%2$s)"</string>
+    <string name="su_manager_not_found">Không tìm thấy ứng dụng có libksud.so</string>
+    <string name="select">Chọn</string>
+    <string name="autorun">Tự động chạy</string>
+    <string name="autorun_expert">Tự động chạy (Chuyên gia)</string>
+    <string name="autorun_description">Chạy khai thác sau khi khởi động</string>
+    <string name="auto_reboot">Tự khởi động lại</string>
+    <string name="auto_reboot_expert">Tự khởi động lại (Chuyên gia)</string>
+    <string name="auto_reboot_description">Khởi động lại mềm sau khi root</string>
+    <string name="ksu_modules">Mô-đun KernelSU</string>
+    <string name="modules_enabled">Đã bật - Hoạt động ở lần root lại tiếp theo</string>
+    <string name="modules_disabled">Đã tắt - Không tải mô-đun khi root lại</string>
+    <string name="advanced_log">Hiện nhật ký nâng cao</string>
+    <string name="advanced_log_description">Hiển thị toàn bộ nhật ký có thể cuộn</string>
+
+    <!-- Điều khiển chạy và tiến trình -->
+    <string name="run_exploit">Chạy khai thác</string>
+    <string name="run_confirm">Bạn có chắc không</string>
+    <string name="running">Đang chạy</string>
+    <string name="rooted">Đã root</string>
+    <string name="manager">Trình quản lý</string>
+    <string name="open_su_manager">Mở trình quản lý SU</string>
+    <string name="open">Mở</string>
+    <string name="save_log">Lưu nhật ký vào Tải xuống</string>
+    <string name="progress_waiting">Đang chờ</string>
+    <string name="progress_verification">Đang xác minh</string>
+    <string name="progress_verified">Đã xác minh</string>
+    <string name="progress_no_su">Không có su</string>
+    <string name="progress_failure">Thất bại</string>
+    <string name="progress_reboot">Khởi động lại</string>
+    <string name="progress_percent">%1$d%%</string>
+
+    <!-- Menu con chế độ tải xuống Samsung -->
+    <string name="recovery">Recovery</string>
+    <string name="recovery_description">Chế độ Recovery: bật/tắt cấp quyền chế độ tải xuống</string>
+    <string name="recovery_download">DL/Recovery</string>
+    <string name="recovery_lockscreen">Màn hình khóa</string>
+    <string name="recovery_maintenance">Chế độ bảo trì</string>
+    <string name="recovery_device">Thiết bị</string>
+    <string name="recovery_writer">Ghi quyền Recovery</string>
+    <string name="recovery_autorun_writer">Tự động ghi quyền</string>
+    <string name="recovery_at_reroot">%1$s (khi root lại)</string>
+    <string name="recovery_no_gate">%1$s (không giới hạn)</string>
+    <string name="recovery_expert">%1$s (Chuyên gia)</string>
+    <string name="recovery_writing">Đang ghi cờ...</string>
+    <string name="recovery_clearing">Đang xóa cờ...</string>
+    <string name="recovery_not_gated">Không bị chặn ở đây</string>
+    <string name="recovery_blocked">D2 bị chặn</string>
+    <string name="recovery_allowed">Cho phép</string>
+    <string name="recovery_unknown">Không rõ</string>
+    <string name="recovery_supported">Hỗ trợ</string>
+    <string name="recovery_unsupported">Không hỗ trợ</string>
+    <string name="recovery_yes">Có</string>
+    <string name="recovery_no">Không</string>
+    <string name="recovery_on">Bật</string>
+    <string name="recovery_off">Tắt</string>
+
+    <!-- Tiêu đề nhật ký trên màn hình và thông báo chẩn đoán phổ biến -->
+    <string name="log_system">HỆ THỐNG</string>
+    <string name="log_setup">THIẾT LẬP</string>
+    <string name="log_patching">VÁ TỆP</string>
+    <string name="log_init">KHỞI TẠO</string>
+    <string name="log_cleanup">DỌN DẸP</string>
+    <string name="log_success">KHAI THÁC THÀNH CÔNG</string>
+    <string name="log_failure">KHAI THÁC THẤT BẠI: %1$s</string>
+    <string name="log_app_version">phiên bản ứng dụng: %1$s</string>
+    <string name="log_manufacturer">nhà sản xuất: %1$s</string>
+    <string name="log_model">kiểu máy: %1$s</string>
+    <string name="log_android_version">phiên bản Android: %1$s</string>
+    <string name="log_security_patch">bản vá bảo mật: %1$s</string>
+    <string name="log_kernel_version">phiên bản kernel: %1$s</string>
+    <string name="log_already_hooked">đã được hook trước đó, bỏ qua</string>
+    <string name="log_buffer_off">LỖI: Tùy chọn nhà phát triển → \'Kích thước bộ đệm nhật ký\' đang đặt là Tắt.</string>
+    <string name="log_buffer_retry">Hãy đổi sang giá trị khác và thử lại.</string>
+    <string name="log_no_manager">chưa chọn trình quản lý SU</string>
+    <string name="log_manager_removed">%1$s không còn được cài đặt</string>
+    <string name="log_ksud_not_found">không tìm thấy libksud.so trong %1$s</string>
+    <string name="log_not_vulnerable">vá: THIẾT BỊ KHÔNG BỊ ẢNH HƯỞNG</string>
+    <string name="log_exception">ngoại lệ: %1$s</string>
+    <string name="log_reason_prefs">ĐỌC TÙY CHỌN THẤT BẠI</string>
+    <string name="log_reason_modules">TẮT MÔ-ĐUN THẤT BẠI</string>
+    <string name="log_reason_ksud">KSUD THOÁT VỚI MÃ LỖI</string>
+    <string name="log_reason_check_logs">KIỂM TRA LOGCAT &amp; DMESG</string>
+    <string name="log_reason_patch">VÁ TỆP THẤT BẠI</string>
+</resources>
