@@ -1301,7 +1301,38 @@ public class MainActivity extends Activity implements IReporter {
 
     // ---- SU manager picker --------------------------------------------------
 
-    /** One candidate: an app that actually ships libksud.so. */
+    private static final String PERM_GET_INSTALLED_APPS = "com.android.permission.GET_INSTALLED_APPS";
+    private static final int REQ_GET_INSTALLED_APPS = 1001;
+
+    /** True when the ROM either does not define GET_INSTALLED_APPS as a runtime
+     *  permission or has already granted it. */
+    private boolean hasAppListPermission() {
+        try {
+            android.content.pm.PermissionInfo pi =
+                    getPackageManager().getPermissionInfo(PERM_GET_INSTALLED_APPS, 0);
+            if ((pi.protectionLevel & android.content.pm.PermissionInfo.PROTECTION_MASK_BASE)
+                    == android.content.pm.PermissionInfo.PROTECTION_DANGEROUS) {
+                return checkSelfPermission(PERM_GET_INSTALLED_APPS)
+                        == PackageManager.PERMISSION_GRANTED;
+            }
+        } catch (PackageManager.NameNotFoundException ignored) {
+        }
+        return true;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_GET_INSTALLED_APPS) {
+            loadSuManagerPref();
+            updateRunButton();
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                showSuManagerPopup();
+            }
+        }
+    }
+
+    /** One candidate: an app that actually ships libksud.so or libapd.so. */
     private static final class SuManagerEntry {
         final String packageName;
         final CharSequence label;
@@ -1312,16 +1343,15 @@ public class MainActivity extends Activity implements IReporter {
         }
     }
 
-    /** Every installed app carrying libksud.so in its native lib dir - exactly
-     *  the set ExploitRunner.stageAssets() can use, so anything listed here is
-     *  guaranteed to pass the runtime check too. */
+    /** Every installed app carrying libksud.so or libapd.so in its native lib dir -
+     *  exactly the set ExploitRunner.stageAssets() can use, so anything listed here
+     *  is guaranteed to pass the runtime check too. */
     private List<SuManagerEntry> scanSuManagers() {
         List<SuManagerEntry> out = new ArrayList<>();
         PackageManager pm = getPackageManager();
         for (ApplicationInfo ai : pm.getInstalledApplications(0)) {
             if (ai.packageName.equals(getPackageName())) continue;
-            if (ai.nativeLibraryDir == null) continue;
-            if (!new File(ai.nativeLibraryDir, "libksud.so").exists()) continue;
+            if (!ExploitRunner.hasKsud(ai)) continue;
             out.add(new SuManagerEntry(ai.packageName, pm.getApplicationLabel(ai)));
         }
         out.sort((a, b) -> a.label.toString().compareToIgnoreCase(b.label.toString()));
@@ -1355,6 +1385,10 @@ public class MainActivity extends Activity implements IReporter {
     /** OneUI-style rounded popup list over the dim overlay - same look and feel
      *  as the overflow menu, so the picker does not look like a stock spinner. */
     private void showSuManagerPopup() {
+        if (!hasAppListPermission()) {
+            requestPermissions(new String[]{PERM_GET_INSTALLED_APPS}, REQ_GET_INSTALLED_APPS);
+            return;
+        }
         float md = getResources().getDisplayMetrics().density;
         List<SuManagerEntry> apps = scanSuManagers();
         final android.widget.PopupWindow[] pwRef = {null};

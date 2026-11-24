@@ -52,8 +52,8 @@ final class D2Writer {
     /** The uid whose package holds ACCESS_VAULTKEEPER_SERVICE. */
     private static final int SYSTEM_UID = 1000;
 
-    /** Where a su binary has been seen; KernelSU binds its own into /system/bin. */
-    private static final String[] SU_PATHS = {"/system/bin/su", "/system/xbin/su", "/sbin/su"};
+    /** Where a su binary has been seen; KernelSU binds /system/bin/su, APatch defaults to /system/bin/kp. */
+    private static final String[] SU_PATHS = {"/system/bin/su", "/system/bin/kp", "/system/xbin/su", "/sbin/su"};
 
     /** A hung su, not a slow TEE: the round trip itself is far under a second. */
     private static final long READ_TIMEOUT_S = 20L;
